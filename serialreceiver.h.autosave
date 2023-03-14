@@ -1,0 +1,19 @@
+#ifndef SERIALRECEIVER_H
+#define SERIALRECEIVER_H
+#include <QtCore>
+
+class SerialReceiver : public QObject
+{
+    Q_OBJECT
+    
+private:
+    void run()
+    {
+        qDebug()<<"From worker thread: "<<currentThreadId();
+    }
+public:
+    SerialReceiver();
+    ~SerialReceiver();
+};
+
+#endif // SERIALRECEIVER_H

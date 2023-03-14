@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="iconController1">resources/iconController1.png</file>
+        <file alias="iconController2">resources/iconController2.png</file>
+        <file alias="iconController3">resources/iconController3.png</file>
+        <file alias="iconController4">resources/iconController4.png</file>
+        <file alias="xb360controllerBackground">resources/xbox_360_controller.png</file>
+        <file alias="xb360controllerIcon">resources/xbox360controller.png</file>
+        <file alias="xb360controllerShadow">resources/xbox_360_controller_shadow.png</file>
+    </qresource>
+</RCC>
