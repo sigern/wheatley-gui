@@ -50,9 +50,9 @@
 //! [0]
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow),
     m_quickWidget(new QQuickWidget),
-    Wheatley(new Robot_params)
+    Wheatley(new Robot_params),
+    ui(new Ui::MainWindow)
 {
 //! [0]
     this->setFixedSize(810,610);
@@ -79,7 +79,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->control_group->setFixedHeight(250);
 
     rootObject = dynamic_cast<QObject*>(m_quickWidget->rootObject());
-    QObject::connect(rootObject, SIGNAL(joystickChanged2(int,int)), this, SLOT(changeDesired(int,int)));
+    QObject::connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
 
     ui->lipol_val->setText(QString::number(0,'f',2)+" V");
     ui->roll_val->setText(QString::number(0,'f',1));
@@ -107,18 +107,15 @@ MainWindow::MainWindow(QWidget *parent) :
     frameParserTimer = new QTimer;
 
     ui->actionConnect->setEnabled(true);
-    ui->Receive_Button->setEnabled(false);
     ui->actionDisconnect->setEnabled(false);
     ui->Disconnect_button->setEnabled(false);
     ui->actionQuit->setEnabled(true);
     ui->actionConfigure->setEnabled(true);
-    ui->progressBar->setValue(0);
-    ui->progressBar->setEnabled(false);
     ui->xboxButton->setEnabled(false);
 
     initActionsConnections();
 
-    connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this,
+    connect(serial, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this,
             SLOT(handleError(QSerialPort::SerialPortError)));
 
 //! [2]
@@ -266,19 +263,19 @@ void MainWindow::writeData(const QByteArray &data)
 //! [7]
 void MainWindow::readData()
 {
-    static const unsigned char start_frame = 0xFF;
-    static const unsigned char end_frame = 0xFE;
-    static const unsigned char separate_frame = 0xFA;
-    static const unsigned char joystick_frame = 0xFD;
-    static const unsigned char pid_frame = 0xFC;
-    static const unsigned char control_frame =0xFB;
+//    static const unsigned char start_frame = 0xFF;
+//    static const unsigned char end_frame = 0xFE;
+//    static const unsigned char separate_frame = 0xFA;
+//    static const unsigned char joystick_frame = 0xFD;
+//    static const unsigned char pid_frame = 0xFC;
+//    static const unsigned char control_frame =0xFB;
 
     //qDebug()<<"Read"<<endl;
     QByteArray data = serial->readAll();
     //qDebug()<<"Length:"<<data.toStdString().length()<<endl;
         for(unsigned int z=0; z<data.toStdString().length(); z++)
         {
-           if((frameHandler->Push((char)data.data()[z]))==-1);
+          // if((frameHandler->Push((char)data.data()[z]))==-1);
               //qDebug()<<"RECEIVE COMMAND QUEUE FULL\n";
         }
     /*
@@ -488,8 +485,6 @@ void MainWindow::initActionsConnections()
     connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(about()));
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
-    connect(m_quickWidget, SIGNAL(pressed()), this, SLOT(changeDesired()));
-
     connect(ui->xboxButton, SIGNAL(clicked()), gamepad, SLOT(show()));
 
     connect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),gamepad,SLOT(displayGamepadState(SimpleXbox360Controller::InputState)));
@@ -539,14 +534,14 @@ void MainWindow::handleParserTimeout()
         switch(command)
         {
         case NONE:
-            if(*input == start_frame)
+            if(*input == FRAME_START)
             {
                 command = CHECK;
                 //qDebug()<<"case NONE";
             }
             break;
         case CHECK:
-            if(*input == sensor_frame)
+            if(*input == FRAME_TYPE_SERVO_VALUE)
             {
                 command = SENSOR_COMMAND;
                 //qDebug()<<"sensor";
@@ -574,317 +569,6 @@ void MainWindow::handleParserTimeout()
 
             //qDebug()<<"case CHECK";
             break;
-       /* case SENSOR_COMMAND:
-            if(*input == separate_frame)
-                command = ACC_READY;
-            else
-                command = NONE;
-            //qDebug()<<"case SENSOR_COMMAND";
-            break;*/
-
-        case SENSOR_COMMAND:
-            //command = ACCX_1;
-            //Temp_SensorStruct.gyro[0] = ((int)(*input))*256;
-            command = MEAS_1;
-            Temp_MeasurStruct.measur = ((long)(*input))*16777216;
-            //qDebug()<<"case ACC_READY:"<<(int)(*input);
-            break;
-        case PARAMETER_COMMAND:
-            command = VOL_1;
-            RobotTransfer_Struct->lipol_vol = ((int)(*input))*256;
-            break;
-        case VOL_1:
-            command = VOL_2;
-            RobotTransfer_Struct->lipol_vol += (int)(*input);
-            //qDebug()<<"VOL:"<<RobotTransfer_Struct->lipol_vol;
-            ui->lipol_val->setText(QString::number(((float)RobotTransfer_Struct->lipol_vol*3*4.3/4096),'f',2)+" V");
-            break;
-        case VOL_2:
-            command = FLOAT_Y1;
-            float_y = ((long)(*input))*16777216;
-            //qDebug()<<*input;
-            break;
-        case FLOAT_Y1:
-            command = FLOAT_Y2;
-            float_y += ((long)(*input))*65536;
-            //qDebug()<<*input;
-            break;
-        case FLOAT_Y2:
-            command = FLOAT_Y3;
-            float_y += ((long)(*input))*256;
-            //()<<*input;
-            break;
-        case FLOAT_Y3:
-            command = FLOAT_Y4;
-            float_y += ((long)(*input));
-            //()<<*input<<endl;
-            ui->tilt_val->setText(QString::number((*((float*)&float_y)),'f',1));
-            break;
-        case ACCX_1:
-            command = ACCX_2;
-            Temp_SensorStruct.gyro[0] += (int)(*input);
-            //qDebug()<<"case ACCX_1:"<<(int)(*input);
-            break;
-        case MEAS_1:
-            command = MEAS_2;
-            Temp_MeasurStruct.measur += ((long)(*input))*65536;
-            break;
-        case MEAS_2:
-            command = MEAS_3;
-            Temp_MeasurStruct.measur += ((long)(*input))*256;
-            break;
-        case MEAS_3:
-            command = MEAS_4;
-            Temp_MeasurStruct.measur += (long)(*input);
-            break;
-        case MEAS_4:
-            command = NONE;
-
-            sensor_count++;
-            memcpy(&Ready_MeasurStruct,&Temp_MeasurStruct,4);
-            char buf[100];
-            sprintf(buf,"%f\n",*((float*)(&Ready_MeasurStruct.measur)));
-            record_file->write(buf);
-            //qDebug()<<"\n";
-            ui->progressBar->setValue(sensor_count/21);
-
-            break;
-        case ACCX_2:
-            command = ACCY_1;
-            Temp_SensorStruct.acc[1] = ((int)(*input))*256;
-            //qDebug()<<"case ACCX_2";
-            break;
-        case ACCY_1:
-            command = ACCY_2;
-            Temp_SensorStruct.acc[1] += (int)(*input);
-            //qDebug()<<"case ACCY_1";
-            break;
-        case ACCY_2:
-            command = ACCZ_1;
-            Temp_SensorStruct.acc[2] = ((int)(*input))*256;
-            //qDebug()<<"case ACCY_2";
-            break;
-        case ACCZ_1:
-            command = ACCZ_2;
-            Temp_SensorStruct.acc[2] += (int)(*input);
-            //qDebug()<<"case ACCZ_1";
-            break;
-      /*  case ACCZ_2:
-            command = SAMPLE;
-            Temp_SensorStruct.sample += (int)(*input);
-            //qDebug()<<"case ACCZ_1";
-            break;*/
-        case ACCZ_2:
-            if(*input == end_frame)
-            {
-                sensor_count++;
-                memcpy(&Ready_SensorStruct,&Temp_SensorStruct,9);
-                command = NONE;
-                char buf[100];
-                sprintf(buf,"%d\t%d\t%d\n",Ready_SensorStruct.gyro[0],Ready_SensorStruct.acc[1],Ready_SensorStruct.acc[2]);
-                record_file->write(buf);
-                //qDebug()<<"\n";
-                ui->progressBar->setValue(sensor_count/6);
-
-            }
-            else
-                command = NONE;
-            //qDebug()<<"case ACCZ_2";
-            break;
-        case SENDING_DN_COMMAND:
-            if(*input == end_frame)
-            {
-                command = NONE;
-                console->putData("Receiving data done!\n");
-                ui->Receive_Button->setEnabled(false);
-                //frameParserTimer->stop();
-                senderTimer->start(1);
-                sensor_count=0;
-                record_file->close();
-            }
-            else
-                command = NONE;
-            break;
-        case RECORDING_DN_COMMAND:
-            if(*input == end_frame)
-            {
-                command = NONE;
-                console->putData("Recording done!\n");
-                ui->Receive_Button->setEnabled(true);
-            }
-            else
-                command = NONE;
-            break;
-//        case VOL_2:
-//            if(*input == end_frame)
-//            {
-//                command = NONE;
-//            }
-//            else
-//                command = NONE;
-            break;
-        case FLOAT_Y4:
-            if(*input == end_frame)
-            {
-                command = NONE;
-            }
-            else
-                command = NONE;
-            break;
-        default:
-            command = NONE;
-            //qDebug()<<"case default";
-            break;
-        /*
-            case NONE:
-                if(*input == start_frame)
-                {
-                    command = CHECK;
-                    //qDebug()<<"case NONE";
-                }
-                break;
-            case CHECK:
-                if(*input == sensor_frame)
-                    command = SENSOR_COMMAND;
-                else
-                    command = NONE;
-                //qDebug()<<"case CHECK";
-                break;
-            case SENSOR_COMMAND:
-                if(*input == separate_frame)
-                    command = ACC_READY;
-                else
-                    command = NONE;
-                //qDebug()<<"case SENSOR_COMMAND";
-                break;
-
-            case ACC_READY:
-                command = ACCX_1;
-                Temp_SensorStruct.acc[0] = ((int)(*input))*256;
-                //qDebug()<<"case ACC_READY:"<<(int)(*input);
-                break;
-            case ACCX_1:
-                command = ACCX_2;
-                Temp_SensorStruct.acc[0] += (int)(*input);
-                //qDebug()<<"case ACCX_1:"<<(int)(*input);
-                break;
-            case ACCX_2:
-                command = ACCY_1;
-                Temp_SensorStruct.acc[1] = ((int)(*input))*256;
-                //qDebug()<<"case ACCX_2";
-                break;
-            case ACCY_1:
-                command = ACCY_2;
-                Temp_SensorStruct.acc[1] += (int)(*input);
-                //qDebug()<<"case ACCY_1";
-                break;
-            case ACCY_2:
-                command = ACCZ_1;
-                Temp_SensorStruct.acc[2] = ((int)(*input))*256;
-                //qDebug()<<"case ACCY_2";
-                break;
-            case ACCZ_1:
-                command = ACCZ_2;
-                Temp_SensorStruct.acc[2] += (int)(*input);
-                //qDebug()<<"case ACCZ_1";
-                break;
-            case ACCZ_2:
-                if(*input == separate_frame)
-                    command = GYRO_READY;
-                else
-                    command = NONE;
-                //qDebug()<<"case ACCZ_2";
-                break;
-
-            case GYRO_READY:
-                command = GYROX_1;
-                Temp_SensorStruct.gyro[0] = ((int)(*input))*256;
-                //qDebug()<<"case GYRO_READY";
-                break;
-            case GYROX_1:
-                command = GYROX_2;
-                Temp_SensorStruct.gyro[0] += (int)(*input);
-                //qDebug()<<"case GYROX_1";
-                break;
-            case GYROX_2:
-                command = GYROY_1;
-                Temp_SensorStruct.gyro[1] = ((int)(*input))*256;
-                //qDebug()<<"case GYROX_2";
-                break;
-            case GYROY_1:
-                command = GYROY_2;
-                Temp_SensorStruct.gyro[1] += (int)(*input);
-                //qDebug()<<"case GYROY_1";
-                break;
-            case GYROY_2:
-                command = GYROZ_1;
-                Temp_SensorStruct.gyro[2] = ((int)(*input))*256;
-                //qDebug()<<"case GYROY_2";
-                break;
-            case GYROZ_1:
-                command = GYROZ_2;
-                Temp_SensorStruct.gyro[2] += (int)(*input);
-                //qDebug()<<"case GYROZ_1";
-                break;
-            case GYROZ_2:
-                if(*input == separate_frame)
-                {
-                    command = MAG_READY;
-                }
-                else
-                    command = NONE;
-                //qDebug()<<"case GYROZ_2";
-                break;
-            case MAG_READY:
-                command = MAGX_1;
-                Temp_SensorStruct.mag[0] = ((int)(*input))*256;
-                //qDebug()<<"case MAG_READY";
-                break;
-            case MAGX_1:
-                command = MAGX_2;
-                Temp_SensorStruct.mag[0] += (int)(*input);
-                //qDebug()<<"case MAGX_1";
-                break;
-            case MAGX_2:
-                command = MAGY_1;
-                Temp_SensorStruct.mag[1] = ((int)(*input))*256;
-                //qDebug()<<"case MAGX_2";
-                break;
-            case MAGY_1:
-                command = MAGY_2;
-                Temp_SensorStruct.mag[1] += (int)(*input);
-                //qDebug()<<"case MAGY_1";
-                break;
-            case MAGY_2:
-                command = MAGZ_1;
-                Temp_SensorStruct.mag[2] = ((int)(*input))*256;
-                //qDebug()<<"case MAGY_2";
-                break;
-            case MAGZ_1:
-                command = MAGZ_2;
-                Temp_SensorStruct.mag[2] += (int)(*input);
-                //qDebug()<<"case MAGZ_1";
-                break;
-            case MAGZ_2:
-                if(*input == end_frame)
-                {
-                    memcpy(&Ready_SensorStruct,&Temp_SensorStruct,9);
-                    command = NONE;
-                    qDebug()<<"ACC:"<<Temp_SensorStruct.acc[0]<<","<<Temp_SensorStruct.acc[1]<<","<<Temp_SensorStruct.acc[2];
-                    qDebug()<<"GYRO:"<<Temp_SensorStruct.gyro[0]<<","<<Temp_SensorStruct.gyro[1]<<","<<Temp_SensorStruct.gyro[2];
-                    qDebug()<<"MAG:"<<Temp_SensorStruct.mag[0]<<","<<Temp_SensorStruct.mag[1]<<","<<Temp_SensorStruct.mag[2];
-                    qDebug()<<"\n";
-
-                }
-                else
-                    command = NONE;
-                //qDebug()<<"case MAGZ_2";
-                break;
-            default:
-                command = NONE;
-                //qDebug()<<"case default";
-                break;
-                */
         }
     }
     //else
@@ -893,38 +577,6 @@ void MainWindow::handleParserTimeout()
     //qDebug()<<"end";
 }
 
-void MainWindow::on_Receive_Button_clicked()
-{
- senderTimer->stop();
- //frameParserTimer->start(3);
- char c[3] = {start_frame,receive_frame,end_frame};
- serial->write(c,3);
- console->putData("Receiving data started...\n");
- sensor_count = 0;
- ui->progressBar->setEnabled(true);
- ui->progressBar->setValue(0);
-}
-
-void MainWindow::on_Record_Button_clicked()
-{
-  //senderTimer->stop();
-  //frameParserTimer->start(2);
-  int index = ui->controller_comboBox->currentIndex();
-  if(index == 2)
-  {
-      PCTransfer_Struct->x_desired = (unsigned short)(((0.000325*step_rec_value*step_rec_value*step_rec_value+0.001274*step_rec_value*step_rec_value+1.044515*step_rec_value)+60)*5/3);
-      std::cout<<PCTransfer_Struct->x_desired<<std::endl;
-      PCTransfer_Struct->y_desired = 100;
-      //qDebug()<<PCTransfer_Struct->x_desired;
-
-  }
-  char c[3] = {start_frame,record_frame,end_frame};
-  serial->write(c,3);
-  handleTimeout();
-  console->putData("Recording tilt data...\n");
-  //senderTimer->start(1);
-
-}
 
 void MainWindow::on_spinBox_roll_valueChanged(int roll)
 {
@@ -949,19 +601,19 @@ void MainWindow::on_controller_comboBox_activated(int index)
     if (index == 0) //Screen Joystick
     {
         ui->xboxButton->setEnabled(false);
-        QObject::connect(rootObject, SIGNAL(joystickChanged2(int,int)), this, SLOT(changeDesired(int,int)));
+        QObject::connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         disconnect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),this,SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
 
     }
     else if(index == 1) //Xbox controller
     {
         ui->xboxButton->setEnabled(true);
-        QObject::disconnect(rootObject, SIGNAL(joystickChanged2(int,int)), this, SLOT(changeDesired(int,int)));
+        QObject::disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),this,SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }
     else if(index == 2) //Step while recording
     {
-        QObject::disconnect(rootObject, SIGNAL(joystickChanged2(int,int)), this, SLOT(changeDesired(int,int)));
+        QObject::disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
 }
 
@@ -979,46 +631,4 @@ void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState GamepadSt
     PCTransfer_Struct->y_desired = Wheatley->y_angle;
     ui->spinBox_roll->setValue(PCTransfer_Struct->y_desired);
     ui->spinBox_tilt->setValue(PCTransfer_Struct->x_desired);
-}
-
-void MainWindow::on_doubleSpinBox_step_valueChanged(double arg1)
-{
-    step_rec_value = arg1;
-}
-
-void MainWindow::on_x_alg_combobox_currentIndexChanged(int index)
-{
-
-}
-
-void MainWindow::on_x_alg_combobox_activated(int index)
-{
-    switch(index)
-    {
-     case 0:
-        ControlType[0] = X_NONE;
-        break;
-     case 1:
-        ControlType[0] = X_PID;
-        break;
-     case 2:
-        ControlType[0] = X_FUZZY;
-        break;
-     default:
-        ControlType[0] = X_NONE;
-        break;
-
-    }
-    char c[5] = {start_frame,alg_frame, (unsigned char)ControlType[0], (unsigned char)ControlType[1], end_frame};
-    serial->write(c,5);
-}
-
-void MainWindow::on_setpoint_button_clicked()
-{
-    PCTransfer_Struct->x_desired = (unsigned short)(((0.000325*step_rec_value*step_rec_value*step_rec_value+0.001274*step_rec_value*step_rec_value+1.044515*step_rec_value)+60)*5/3);
-    //qDebug()<<PCTransfer_Struct->x_desired<<endl;
-}
-
-void MainWindow::on_pushButton_clicked()
-{
 }

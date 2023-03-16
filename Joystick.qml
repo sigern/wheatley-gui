@@ -2,7 +2,7 @@ import QtQuick 2.0
 
 Rectangle
 {
-    signal joystickChanged2(int x, int y);
+    signal joystickChanged(int x, int y);
     id: root
     color: "white"
     MyItem
@@ -17,6 +17,6 @@ Rectangle
     Connections
     {
         target: joyStick
-        onJoystickChanged: joystickChanged2(x,y)
+        function onJoystickChanged(x, y) { joystickChanged(x, y) }
     }
 }

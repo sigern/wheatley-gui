@@ -39,10 +39,12 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    QFile styleSheetFile("../Combinear.qss");
-    bool result = styleSheetFile.open(QFile::ReadOnly);
+    // Setting theme style
+    QFile styleSheetFile("../wheatley-gui/Combinear.qss");
+    styleSheetFile.open(QFile::ReadOnly);
     QString styleSheet = QLatin1String(styleSheetFile.readAll());
     app.setStyleSheet(styleSheet);
+
     MainWindow w;
     w.show();
     return app.exec();

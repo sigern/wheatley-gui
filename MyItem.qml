@@ -4,9 +4,7 @@ Item {
     id:joyStick;
     property int offset:30;
 
-    signal pressed();
-    signal released();
-    signal joystickChanged(int x,int y);
+    signal joystickChanged(int x, int y);
 
     Rectangle {
        id:entireArea
@@ -34,9 +32,9 @@ Item {
         id:mouseArea
         anchors.fill: parent
 
-        onPressed: {
-            joyStick.pressed();
-        }
+        //onPressed: {
+        //    joyStick.pressed();
+        //}
 
         onPositionChanged:
         {
@@ -114,14 +112,14 @@ Item {
          joyStick.joystickChanged(stick.x,stick.y);
         }
 
-        onReleased:
-        {
+        //onReleased:
+        //{
             //snap to center
            // stick.x = totalArea.width /2 - stick.radius;
            // stick.y = totalArea.height/2 - stick.radius;
 
-            joyStick.released();
-        }
+        //    joyStick.released();
+       // }
 
         onDoubleClicked:
         {

@@ -66,6 +66,26 @@ enum Command{NONE, CHECK, END, CONTROL, SENSOR_READY, ACC_READY, GYRO_READY, MAG
              GYROX_1, GYROX_2, GYROY_1, GYROY_2, GYROZ_1, GYROZ_2,
              MAGX_1,  MAGX_2,  MAGY_1,  MAGY_2,  MAGZ_1,  MAGZ_2,
              MEAS_1,  MEAS_2,  MEAS_3,  MEAS_4};
+enum Frame {
+    FRAME_START = 0xF0,
+    FRAME_END   = 0xF1,
+    FRAME_TYPE_JOYSTICK = 0xF2,
+    FRAME_TYPE_SERVO_VALUE = 0xF3
+};
+
+//static const char start_frame          = 0xFF;
+//static const char end_frame            = 0xFE;
+//static const char separate_frame       = 0xFA;
+//static const char joystick_frame       = 0xFD;
+//static const char pid_frame            = 0xFC;
+//static const char control_frame        = 0xFB;
+//static const char sensor_frame         = 0xF9;
+//static const char receive_frame        = 0xF8;
+//static const char sending_done_frame   = 0xF7;
+//static const char record_frame         = 0xF6;
+//static const char recording_done_frame = 0xF5;
+//static const char parameter_frame      = 0xF0;
+//static const char alg_frame            = 0xEF;
 
 typedef volatile struct robotTransferStruct
 {
@@ -134,27 +154,10 @@ private slots:
     void handleTimeout();
     void handleParserTimeout();
 
-    void on_Receive_Button_clicked();
-
-    void on_pushButton_clicked();
-
     void on_spinBox_roll_valueChanged(int arg1);
-
     void on_spinBox_tilt_valueChanged(int arg1);
-
-    void on_Record_Button_clicked();
-
     void on_xboxButton_clicked();
-
     void on_controller_comboBox_activated(int index);
-
-    void on_doubleSpinBox_step_valueChanged(double arg1);
-
-    void on_x_alg_combobox_currentIndexChanged(int index);
-
-    void on_x_alg_combobox_activated(int index);
-
-    void on_setpoint_button_clicked();
 
 private:
     void initActionsConnections();
