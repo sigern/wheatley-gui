@@ -41,8 +41,10 @@
 #include <QtWidgets>
 #include <QtSerialPort/QSerialPort>
 #include <QGroupBox>
-#include "SimpleXbox360Controller/simplexbox360controller.h"
 #include <QFile>
+
+#include "Queue.h"
+#include "SimpleXbox360Controller/simplexbox360controller.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -54,19 +56,30 @@ QT_END_NAMESPACE
 
 class Console;
 class SettingsDialog;
-class Queue;
 class GamepadDisplay;
 class SimpleXbox360Controller;
 
-enum Algorithm{X_NONE, X_PID, X_FUZZY, Y_NONE, Y_PID};
-enum Command{NONE, CHECK, END, CONTROL, SENSOR_READY, ACC_READY, GYRO_READY, MAG_READY,
-             SENSOR_COMMAND, SENDING_DN_COMMAND, SAMPLE, RECORDING_DN_COMMAND, PARAMETER_COMMAND, VOL_1, VOL_2,
-             FLOAT_Y1, FLOAT_Y2, FLOAT_Y3, FLOAT_Y4,
-             ACCX_1,  ACCX_2,  ACCY_1,  ACCY_2,  ACCZ_1,  ACCZ_2,
-             GYROX_1, GYROX_2, GYROY_1, GYROY_2, GYROZ_1, GYROZ_2,
-             MAGX_1,  MAGX_2,  MAGY_1,  MAGY_2,  MAGZ_1,  MAGZ_2,
-             MEAS_1,  MEAS_2,  MEAS_3,  MEAS_4};
-enum Frame {
+enum EAlgorithm {
+    X_NONE,
+    X_PID,
+    X_FUZZY,
+    Y_NONE,
+    Y_PID
+};
+
+enum EReceiverState {
+    NONE,
+    CHECK,
+    SERVO
+};
+//             SENSOR_READY, ACC_READY, GYRO_READY, MAG_READY,
+//             SENSOR_COMMAND, SENDING_DN_COMMAND, SAMPLE, RECORDING_DN_COMMAND, PARAMETER_COMMAND, VOL_1, VOL_2,
+//             FLOAT_Y1, FLOAT_Y2, FLOAT_Y3, FLOAT_Y4,
+//             ACCX_1,  ACCX_2,  ACCY_1,  ACCY_2,  ACCZ_1,  ACCZ_2,
+//             GYROX_1, GYROX_2, GYROY_1, GYROY_2, GYROZ_1, GYROZ_2,
+//             MAGX_1,  MAGX_2,  MAGY_1,  MAGY_2,  MAGZ_1,  MAGZ_2,
+//             MEAS_1,  MEAS_2,  MEAS_3,  MEAS_4};
+enum EFrame : uint8_t {
     FRAME_START = 0xF0,
     FRAME_END   = 0xF1,
     FRAME_TYPE_JOYSTICK = 0xF2,
@@ -87,100 +100,54 @@ enum Frame {
 //static const char parameter_frame      = 0xF0;
 //static const char alg_frame            = 0xEF;
 
-typedef volatile struct robotTransferStruct
+typedef struct robotMsg
 {
-    unsigned short int roll_servo;
-    unsigned short int tilt_servo;
-    unsigned short int lipol_vol;
-    unsigned short int x_current;
-    unsigned short int y_current;
-    unsigned short int velocity;
-}RobotTransferStruct;
+    unsigned int roll_servo;
+    unsigned int tilt_servo;
+    unsigned int lipol_vol;
+    unsigned int x_current;
+    unsigned int y_current;
+    unsigned int velocity;
+} RobotMsg_t;
 
-typedef volatile struct pcTransferStruct
+typedef struct pcServoMsg
 {
-    unsigned short int x_desired;
-    unsigned short int y_desired;
-}PCTransferStruct;
+    uint8_t tilt = 100;
+    uint8_t roll = 100;
+} PcServoMsg_t;
 
-
-typedef volatile struct robot_params
+typedef struct robotState
 {
-    double x_angle;
-    double y_angle;
-    double velocity;
-    double p_gain;
-    double i_gain;
-    double d_gain;
-    double roll_servo;
-    double tilt_servo;
-    double lipol_vol;
-} Robot_params;
+    int roll_servo = 100;
+    int tilt_servo = 100;
+    float x_angle;
+    float y_angle;
+    float velocity;
+    float lipol_vol;
+    float p_gain;
+    float i_gain;
+    float d_gain;
+} RobotState_t;
 
-typedef struct sensorStruct
+typedef struct sensors
 {
      short int acc[3];
      short int gyro[3];
      short int mag[3];
      int sample;
-} SensorStruct;
+} Sensors_t;
 
-typedef struct MeasurStruct
-{
-     long measur;
-     int sample;
-} MeasurStruct;
+//typedef struct MeasurStruct
+//{
+//     long measur;
+//     int sample;
+//} sMeasurment;
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
-
-private slots:
-    void openSerialPort();
-    void closeSerialPort();
-    void about();
-    void writeData(const QByteArray &data);
-    void readData();
-    void changeDesired(int x,int y);
-    void changeDesiredXbox(SimpleXbox360Controller::InputState GamepadState);
-
-    void handleError(QSerialPort::SerialPortError error);
-
-    void on_actionConnect_triggered();
-    void handleTimeout();
-    void handleParserTimeout();
-
-    void on_spinBox_roll_valueChanged(int arg1);
-    void on_spinBox_tilt_valueChanged(int arg1);
-    void on_xboxButton_clicked();
-    void on_controller_comboBox_activated(int index);
-
-private:
-    void initActionsConnections();
-    QGroupBox *FirstGroup();
-    QQuickWidget *m_quickWidget;
-    QObject *rootObject;
-    Robot_params *Wheatley;
-    Command command;
-    Algorithm ControlType[2];
-    RobotTransferStruct* RobotTransfer_Struct;
-    PCTransferStruct* PCTransfer_Struct;
-    volatile char temp_RobotTransfer[12];
-    volatile char temp_PCTransfer[4];
-    SensorStruct Temp_SensorStruct;
-    SensorStruct Ready_SensorStruct;
-    MeasurStruct Temp_MeasurStruct;
-    MeasurStruct Ready_MeasurStruct;
-    FILE rec_file;
-    QFile *record_file;
-    volatile int iter;
-    volatile int sensor_count;
-    volatile long int float_y;
-    double step_rec_value;
     static const char start_frame          = 0xFF;
     static const char end_frame            = 0xFE;
     static const char separate_frame       = 0xFA;
@@ -195,20 +162,71 @@ private:
     static const char parameter_frame      = 0xF0;
     static const char alg_frame            = 0xEF;
 
-    int x;
-    Queue* frameHandler;
-    unsigned char *input;
-    SimpleXbox360Controller::InputState currentGamepadState;
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
+
+private slots:
+    void openSerialPort();
+    void closeSerialPort();
+    void about();
+    void writeData(const QByteArray &data);
+    void readData();
+    void changeDesired(int tilt, int roll);
+    void changeDesiredXbox(SimpleXbox360Controller::InputState GamepadState);
+
+    void handleError(QSerialPort::SerialPortError error);
+
+    //void on_actionConnect_triggered();
+    void handleTimeout();
+    void handleParserTimeout();
+
+    void on_spinBox_roll_valueChanged(int arg1);
+    void on_spinBox_tilt_valueChanged(int arg1);
+    //void on_xboxButton_clicked();
+    void on_controller_comboBox_activated(int index);
 
 private:
+    void connectSignals();
+    void updateUiControlValues();
+
+    QGroupBox *FirstGroup();
+    QQuickWidget *m_quickWidget;
+    QObject *rootObject;
+
     Ui::MainWindow *ui;
-    Console *console;
-    SettingsDialog *settings;
-    GamepadDisplay *gamepad;
-    SimpleXbox360Controller *controller;
-    QSerialPort *serial;
-    QTimer *senderTimer;
-    QTimer *frameParserTimer;
+    Console *m_console;
+    SettingsDialog *m_settings;
+    GamepadDisplay *m_gamepadDisplay;
+    SimpleXbox360Controller *m_gamepadController;
+    QSerialPort *m_serialPort;
+
+    QTimer m_senderTimer;
+    QTimer m_receiverTimer;
+
+    RobotState_t m_wheatley;
+    EReceiverState m_receiverState = EReceiverState::NONE;
+    //Algorithm ControlType[2];
+
+    RobotMsg_t m_robotMsg;
+    PcServoMsg_t m_pcServoMsg;
+
+    FixedQueue<char, 1000> m_receiverQueue;
+    unsigned char *input;
+    SimpleXbox360Controller::InputState m_gamepadInputState;
+
+    //    volatile char temp_RobotTransfer[12];
+    //    volatile char temp_PCTransfer[4];
+    //    SensorStruct Temp_SensorStruct;
+    //    SensorStruct Ready_SensorStruct;
+    //    MeasurStruct Temp_MeasurStruct;
+    //    MeasurStruct Ready_MeasurStruct;
+    //    FILE rec_file;
+    //    QFile *record_file;
+    //    volatile int iter;
+    //    volatile int sensor_count;
+    //    volatile long int float_y;
+    //    double step_rec_value;
+    //    int x;
 };
 
 #endif // MAINWINDOW_H

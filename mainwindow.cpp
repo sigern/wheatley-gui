@@ -33,6 +33,7 @@
 ****************************************************************************/
 
 #include "mainwindow.h"
+#include "Queue.h"
 #include "ui_mainwindow.h"
 #include "console.h"
 #include "gamepaddisplay.h"
@@ -43,201 +44,128 @@
 #include <QMessageBox>
 #include <QQuickItem>
 #include <QtSerialPort/QSerialPort>
-#include "Queue.h"
 #include <QFile>
-
 
 //! [0]
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     m_quickWidget(new QQuickWidget),
-    Wheatley(new Robot_params),
     ui(new Ui::MainWindow)
 {
 //! [0]
-    this->setFixedSize(810,610);
+    //this->setFixedSize(810,610);
     ui->setupUi(this);
-    console = new Console;
-    console->setEnabled(false);
+    m_console = new Console;
+    m_console->setEnabled(false);
     //setCentralWidget(console);
     QVBoxLayout *vbox = new QVBoxLayout;
-    vbox->addWidget(console);
+    vbox->addWidget(m_console);
     ui->console_group->setLayout(vbox);
-    ui->console_group->setFixedHeight(300);
-    ui->console_group->setFixedWidth(480);
+    //ui->console_group->setFixedHeight(300);
+    //ui->console_group->setFixedWidth(480);
     //ui->control_group->setFixedHeight(210);
 
     QUrl source("qrc:/Joystick.qml");
-    QVBoxLayout *vbox_joy = new QVBoxLayout;
-    vbox_joy->addWidget(m_quickWidget);
-    ui->joystick_group->setLayout(vbox_joy);
-    ui->joystick_group->setFixedHeight(300);
-    ui->joystick_group->setFixedWidth(300);
+    QGridLayout *gridJoystickLayout = new QGridLayout;
+    QVBoxLayout *verticalJoystickLayout = new QVBoxLayout;
+
+    gridJoystickLayout->addWidget(m_quickWidget, 1, 1, 1, 1);
+    ui->joystick_group->setLayout(gridJoystickLayout);
+   // ui->joystick_group->setFixedHeight(300);
+   // ui->joystick_group->setFixedWidth(300);
     m_quickWidget ->resize(100,100);
     m_quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView );
     m_quickWidget->setSource(source);
-    ui->control_group->setFixedHeight(250);
+    //ui->control_group->setFixedHeight(250);
 
     rootObject = dynamic_cast<QObject*>(m_quickWidget->rootObject());
-    QObject::connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
+    QObject::connect(rootObject, SIGNAL(joystickChanged(int, int)), this, SLOT(changeDesired(int, int)));
 
     ui->lipol_val->setText(QString::number(0,'f',2)+" V");
     ui->roll_val->setText(QString::number(0,'f',1));
     ui->tilt_val->setText(QString::number(0,'f',1));
     ui->velocity_val->setText(QString::number(0,'f',1));
-    ui->x_current_val->setText("  "+QString::number(0,'f',1));
-    ui->y_current_val->setText("  "+QString::number(0,'f',1));
     ui->spinBox_roll->setValue(0);
     ui->spinBox_tilt->setValue(0);
 //    ui->p_value->setText(QString::number(0,'f',1));
 //    ui->i_value->setText(QString::number(0,'f',1));
 //    ui->d_value->setText(QString::number(0,'f',1));
 
-    frameHandler = new Queue;
-
    // setCentralWidget(centralWidget);
-//! [1]
-    serial = new QSerialPort(this);
-//! [1]
-    settings = new SettingsDialog;
-    gamepad = new GamepadDisplay;
-    controller = new SimpleXbox360Controller(0);
-    controller->startAutoPolling(20);
-    senderTimer = new QTimer;
-    frameParserTimer = new QTimer;
+    m_serialPort = new QSerialPort(this);
+    m_settings = new SettingsDialog;
+    m_gamepadDisplay = new GamepadDisplay;
+    m_gamepadController = new SimpleXbox360Controller(0);
+    m_gamepadController->startAutoPolling(20);
 
     ui->actionConnect->setEnabled(true);
     ui->actionDisconnect->setEnabled(false);
-    ui->Disconnect_button->setEnabled(false);
     ui->actionQuit->setEnabled(true);
     ui->actionConfigure->setEnabled(true);
     ui->xboxButton->setEnabled(false);
 
-    initActionsConnections();
-
-    connect(serial, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this,
-            SLOT(handleError(QSerialPort::SerialPortError)));
-
-//! [2]
-    connect(serial, SIGNAL(readyRead()), this, SLOT(readData()));
-//! [2]
-    connect(console, SIGNAL(getData(QByteArray)), this, SLOT(writeData(QByteArray)));
-    connect(senderTimer, SIGNAL(timeout()), this, SLOT(handleTimeout()));
-    connect(frameParserTimer, SIGNAL(timeout()), this, SLOT(handleParserTimeout()));
-
-    command = NONE;
-    RobotTransfer_Struct = new RobotTransferStruct;
-    RobotTransfer_Struct->roll_servo = 0;
-    RobotTransfer_Struct->tilt_servo = 0;
-    RobotTransfer_Struct->lipol_vol = 0;
-    RobotTransfer_Struct->x_current = 100;
-    RobotTransfer_Struct->y_current = 100;
-    RobotTransfer_Struct->velocity = 0;
-
-    PCTransfer_Struct = new PCTransferStruct;
-    PCTransfer_Struct->x_desired = 100;
-    PCTransfer_Struct->y_desired = 100;
-
-    for (int i = 0;i<12;i++)
-        temp_RobotTransfer[i] = 0;
-    for (int j = 0;j<4;j++)
-        temp_PCTransfer[j] = 0;
-    iter = 0;
-    sensor_count = 0;
-    x=0;
-    input = new unsigned char;
-    record_file = new QFile();
-    step_rec_value = 0.0;
-    float_y = 0;
-    ControlType[0] = X_NONE;
-    ControlType[1] = Y_NONE;
-    //! [3]
+    connectSignals();
 }
-//! [3]
 
 MainWindow::~MainWindow()
 {
-    delete settings;
-    delete gamepad;
-    delete controller;
+    delete m_settings;
+    delete m_gamepadDisplay;
+    delete m_gamepadController;
+    delete m_serialPort;
+    delete m_console;
     delete ui;
-    delete serial;
-    delete senderTimer;
-    delete frameParserTimer;
-    delete console;
-    delete record_file;
 }
 
-//! [4]
 void MainWindow::openSerialPort()
 {
-    SettingsDialog::Settings p = settings->settings();
-    serial->setPortName(p.name);
-    serial->setBaudRate(p.baudRate);
-    serial->setDataBits(p.dataBits);
-    serial->setParity(p.parity);
-    serial->setStopBits(p.stopBits);
-    serial->setFlowControl(p.flowControl);
-    if (serial->open(QIODevice::ReadWrite)) {
-        console->setEnabled(true);
-        console->setLocalEchoEnabled(p.localEchoEnabled);
+    SettingsDialog::Settings p = m_settings->settings();
+    m_serialPort->setPortName(p.name);
+    m_serialPort->setBaudRate(p.baudRate);
+    m_serialPort->setDataBits(p.dataBits);
+    m_serialPort->setParity(p.parity);
+    m_serialPort->setStopBits(p.stopBits);
+    m_serialPort->setFlowControl(p.flowControl);
+    if (m_serialPort->open(QIODevice::ReadWrite)) {
+        m_console->setEnabled(true);
+        m_console->setLocalEchoEnabled(p.localEchoEnabled);
         ui->actionConnect->setEnabled(false);
-        ui->Connect_button->setEnabled(false);
-        ui->Configure_button->setEnabled(false);
         ui->actionConfigure->setEnabled(false);
         ui->actionDisconnect->setEnabled(true);
-        ui->Disconnect_button->setEnabled(true);
         ui->statusBar->showMessage(tr("Connected to %1 : %2, %3, %4, %5, %6")
                                    .arg(p.name).arg(p.stringBaudRate).arg(p.stringDataBits)
                                    .arg(p.stringParity).arg(p.stringStopBits).arg(p.stringFlowControl));
-        console->putData("*** Connection successfully established ***\n");
+        m_console->putData("*** Connection successfully established ***\n");
 
         //senderTimer->start(1);
-        //frameParserTimer->start(3);
+        m_receiverTimer.start(100);
+        std::cout<<"Startimg timers"<<std::endl;
     }
     else
     {
-        QMessageBox::critical(this, tr("Error"), serial->errorString());
+        QMessageBox::critical(this, tr("Error"), m_serialPort->errorString());
 
         ui->statusBar->showMessage(tr("Open error"));
-        console->putData("*** Connection encountered an error ***\n");
+        m_console->putData("*** Connection encountered an error ***\n");
 
     }
-    iter = 0;
-    RobotTransfer_Struct->roll_servo = 0;
-    RobotTransfer_Struct->tilt_servo = 0;
-    RobotTransfer_Struct->lipol_vol = 0;
-    RobotTransfer_Struct->x_current = 100;
-    RobotTransfer_Struct->y_current = 100;
-    RobotTransfer_Struct->velocity = 0;
-    PCTransfer_Struct->x_desired = 100;
-    PCTransfer_Struct->y_desired = 100;
-    for (int i = 0;i<12;i++)
-        temp_RobotTransfer[i] = 0;
-    for (int j = 0;j<4;j++)
-        temp_PCTransfer[j] = 0;
-
 }
-//! [4]
 
-//! [5]
 void MainWindow::closeSerialPort()
 {
-    serial->close();
-    console->setEnabled(false);
+    m_serialPort->close();
+    m_console->setEnabled(false);
+
     ui->actionConnect->setEnabled(true);
-    ui->Connect_button->setEnabled(true);
-    ui->Disconnect_button->setEnabled(false);
     ui->actionDisconnect->setEnabled(false);
     ui->actionConfigure->setEnabled(true);
-    ui->Configure_button->setEnabled(true);
     ui->statusBar->showMessage(tr("Disconnected"));
-    console->putData("*** Connection aborted by user ***\n");
-    senderTimer->stop();
-    frameParserTimer->stop();
-    sensor_count=0;
+
+    m_console->putData("*** Connection aborted by user ***\n");
+
+    m_senderTimer.stop();
+    m_receiverTimer.stop();
 }
-//! [5]
 
 void MainWindow::about()
 {
@@ -253,14 +181,11 @@ void MainWindow::about()
                                "<center>January 2015</center>"));
 }
 
-//! [6]
 void MainWindow::writeData(const QByteArray &data)
 {
-    serial->write(data);
+    m_serialPort->write(data);
 }
-//! [6]
 
-//! [7]
 void MainWindow::readData()
 {
 //    static const unsigned char start_frame = 0xFF;
@@ -270,14 +195,22 @@ void MainWindow::readData()
 //    static const unsigned char pid_frame = 0xFC;
 //    static const unsigned char control_frame =0xFB;
 
-    //qDebug()<<"Read"<<endl;
-    QByteArray data = serial->readAll();
-    //qDebug()<<"Length:"<<data.toStdString().length()<<endl;
-        for(unsigned int z=0; z<data.toStdString().length(); z++)
-        {
-          // if((frameHandler->Push((char)data.data()[z]))==-1);
-              //qDebug()<<"RECEIVE COMMAND QUEUE FULL\n";
+    const QByteArray incomingData = m_serialPort->readAll();
+    const char* pIncomingCharData = incomingData.constData();
+    if (!incomingData.isEmpty()) {
+        std::stringstream ss;
+        ss << "Read " << incomingData.size() <<" bytes:";
+        for(int i = 0; i < incomingData.size(); i++) {
+            ss <<std::hex<< " " << int(*(pIncomingCharData + i) & 0xFF);
         }
+        ss << "\n";
+        m_console->putData(ss.str().c_str());
+        m_receiverQueue.pushN(pIncomingCharData, incomingData.size());
+    }
+
+    if (m_receiverQueue.isFull()) {
+       m_console->putData("RECEIVE QUEUE FULL\n");
+    }
     /*
         frameHandler->Push(start_frame);
         frameHandler->Push(sensor_frame);
@@ -398,22 +331,24 @@ void MainWindow::readData()
     //console->putData(data);
 
 }
-//! [7]
-void MainWindow::changeDesired(int x,int y)
+
+void MainWindow::updateUiControlValues()
+{
+    ui->lipol_val->setText(QString::number(m_wheatley.lipol_vol, 'f', 2)+" V");
+    ui->roll_val->setText(QString::number(m_wheatley.roll_servo, 'i', 1));
+    ui->tilt_val->setText(QString::number(m_wheatley.roll_servo, 'i', 1));
+    ui->velocity_val->setText(QString::number(m_wheatley.velocity, 'f', 1));
+}
+
+void MainWindow::changeDesired(int tilt, int roll)
 {
 //    ui->x_desired_val->setText(QString::number(x,'f',1));
 //    ui->y_desired_val->setText(QString::number((-y+200),'f',1));
     int index = ui->controller_comboBox->currentIndex();
     if(index == 0)
     {
-        ui->spinBox_roll->setValue(-y+200);
-        ui->spinBox_tilt->setValue(x);
-
-        Wheatley->x_angle = (double(x));
-        Wheatley->y_angle = (-double(y))+200;
-
-        PCTransfer_Struct->x_desired = Wheatley->x_angle;
-        PCTransfer_Struct->y_desired = Wheatley->y_angle;
+        m_wheatley.tilt_servo = tilt;
+        m_wheatley.roll_servo = -roll + 200;
     }
 
 
@@ -457,59 +392,57 @@ void MainWindow::changeDesired(int x,int y)
         */
 }
 
-//! [8]
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {
-        QMessageBox::critical(this, tr("Critical Error"), serial->errorString());
+        QMessageBox::critical(this, tr("Critical Error"), m_serialPort->errorString());
         closeSerialPort();
     }
 }
-//! [8]
 
-void MainWindow::initActionsConnections()
+void MainWindow::connectSignals()
 {
-    connect(ui->Connect_button, SIGNAL(clicked()), this, SLOT(openSerialPort()));
-    connect(ui->actionConnect, SIGNAL(triggered()), this, SLOT(openSerialPort()));
 
-    connect(ui->Disconnect_button, SIGNAL(clicked()), this, SLOT(closeSerialPort()));
-    connect(ui->actionDisconnect, SIGNAL(triggered()), this, SLOT(closeSerialPort()));
+    connect(m_serialPort, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+    connect(m_serialPort, SIGNAL(readyRead()), this, SLOT(readData()));
 
+    connect(m_console, SIGNAL(getData(QByteArray)), this, SLOT(writeData(QByteArray)));
+
+    connect(&m_senderTimer, SIGNAL(timeout()), this, SLOT(handleTimeout()));
+    connect(&m_receiverTimer, SIGNAL(timeout()), this, SLOT(handleParserTimeout()));
+
+    connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), m_gamepadDisplay, SLOT(displayGamepadState(SimpleXbox360Controller::InputState)));
+    connect(m_gamepadController, SIGNAL(controllerConnected(uint)), m_gamepadDisplay, SLOT(GamepadConnected()));
+    connect(m_gamepadController, SIGNAL(controllerDisconnected(uint)), m_gamepadDisplay, SLOT(GamepadDisconnected()));
+
+    connect(ui->actionConnect,  SIGNAL(triggered()), this, SLOT(openSerialPort()));
+    connect(ui->actionDisconnect,  SIGNAL(triggered()), this, SLOT(closeSerialPort()));
     connect(ui->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
-
-    connect(ui->Configure_button, SIGNAL(clicked()), settings, SLOT(show()));
-    connect(ui->actionConfigure, SIGNAL(triggered()), settings, SLOT(show()));
-
-    connect(ui->Clear_button, SIGNAL(clicked()), console, SLOT(clear()));
-    connect(ui->actionClear, SIGNAL(triggered()), console, SLOT(clear()));
+    connect(ui->actionConfigure, SIGNAL(triggered()), m_settings, SLOT(show()));
+    connect(ui->actionClear, SIGNAL(triggered()), m_console, SLOT(clear()));
     connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(about()));
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
-    connect(ui->xboxButton, SIGNAL(clicked()), gamepad, SLOT(show()));
-
-    connect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),gamepad,SLOT(displayGamepadState(SimpleXbox360Controller::InputState)));
-    connect(controller,SIGNAL(controllerConnected(uint)),gamepad,SLOT(GamepadConnected()));
-    connect(controller,SIGNAL(controllerDisconnected(uint)),gamepad,SLOT(GamepadDisconnected()));
-
+    connect(ui->xboxButton, SIGNAL(clicked()), m_gamepadDisplay, SLOT(show()));
 }
 
-void MainWindow::on_actionConnect_triggered()
-{
+//void MainWindow::on_actionConnect_triggered()
+//{
 
-}
+//}
 
 void MainWindow::handleTimeout()
 {
-    char c[6] = {start_frame,joystick_frame,100,separate_frame,100,end_frame};
-    temp_PCTransfer[0] =  PCTransfer_Struct->x_desired&0x00FF;
-    temp_PCTransfer[1] = (PCTransfer_Struct->x_desired&0xFF00)>>8;
-    temp_PCTransfer[2] =  PCTransfer_Struct->y_desired&0x00FF;
-    temp_PCTransfer[3] =  (PCTransfer_Struct->y_desired&0xFF00)>>8;
-    //qDebug()<<"0 = "<<(PCTransfer_Struct->x_desired&0x00FF);
-    //qDebug()<<"2 = "<<(PCTransfer_Struct->y_desired&0x00FF);
-    c[2] = (PCTransfer_Struct->x_desired&0x00FF);
-    c[4] = (PCTransfer_Struct->y_desired&0x00FF);
-    serial->write(c,6);
+//    char c[6] = {start_frame,joystick_frame,100,separate_frame,100,end_frame};
+//    temp_PCTransfer[0] =  PCTransfer_Struct->x_desired&0x00FF;
+//    temp_PCTransfer[1] = (PCTransfer_Struct->x_desired&0xFF00)>>8;
+//    temp_PCTransfer[2] =  PCTransfer_Struct->y_desired&0x00FF;
+//    temp_PCTransfer[3] =  (PCTransfer_Struct->y_desired&0xFF00)>>8;
+//    //qDebug()<<"0 = "<<(PCTransfer_Struct->x_desired&0x00FF);
+//    //qDebug()<<"2 = "<<(PCTransfer_Struct->y_desired&0x00FF);
+//    c[2] = (PCTransfer_Struct->x_desired&0x00FF);
+//    c[4] = (PCTransfer_Struct->y_desired&0x00FF);
+//    serial->write(c,6);
 
     //qDebug()<<"[0]-"<<(unsigned int)(temp_PCTransfer[0]&0x00FF)<<" [2]-"<<(unsigned int)(temp_PCTransfer[2]&0x00FF)<<endl;
     //serial->write((char*)&start_frame);
@@ -523,112 +456,103 @@ void MainWindow::handleTimeout()
 
 void MainWindow::handleParserTimeout()
 {
-
-    char check_empty = 0;
-    //qDebug()<<"1";
-    check_empty = frameHandler->Pop(input);
-    //qDebug()<<"2";
-    if (check_empty != -1)
+    std::cout<<"Parsing:"<<std::endl;
+    if (!m_receiverQueue.empty())
     {
+        char el = m_receiverQueue.front();
         //qDebug()<<"command = "<<command;
-        switch(command)
-        {
-        case NONE:
-            if(*input == FRAME_START)
-            {
-                command = CHECK;
-                //qDebug()<<"case NONE";
-            }
-            break;
-        case CHECK:
-            if(*input == FRAME_TYPE_SERVO_VALUE)
-            {
-                command = SENSOR_COMMAND;
-                //qDebug()<<"sensor";
-            }
-            else if (*input == sending_done_frame)
-            {
-                command = SENDING_DN_COMMAND;
-               //qDebug()<<"send done";
-            }
-            else if (*input == parameter_frame)
-            {
-                command = PARAMETER_COMMAND;
-                //qDebug()<<"parameter done";
-            }
-            else if (*input == recording_done_frame)
-            {
-                command = RECORDING_DN_COMMAND;
-                //qDebug()<<"rec done";
-                record_file->setFileName("wheatley_rec.txt");
-                record_file->open(QIODevice::ReadWrite | QIODevice::Text);
-                //record_file->write("gyro_x\tacc_y\tacc_z\t\n");
-            }
-            else
-                command = NONE;
-
-            //qDebug()<<"case CHECK";
-            break;
+        switch(m_receiverState) {
+            case NONE:
+                if(static_cast<EFrame>(el) == FRAME_START) {
+                    m_receiverState = CHECK;
+                    m_receiverQueue.pop();
+                    std::cout<<"case NONE"<<std::endl;
+                }
+                break;
+            case CHECK:
+                if(static_cast<EFrame>(el) == FRAME_TYPE_SERVO_VALUE) {
+                    m_receiverState = SERVO;
+                    std::cout<<"case SERVO"<<std::endl;
+                } else {
+                    m_receiverState = NONE;
+                }
+                m_receiverQueue.pop();
+                //qDebug()<<"case CHECK";
+                break;
+            case SERVO:
+                if (m_receiverQueue.size() >= 5) {
+                    char servoArray[5] = {0};
+                    m_receiverQueue.popN(servoArray, 5);
+                    std::cout<<"Tilt: "<<std::hex<<servoArray[0]<<", "<<servoArray[1]<<std::endl;
+                    std::cout<<"Roll: "<<std::hex<<servoArray[2]<<", "<<servoArray[3]<<std::endl;
+                    if (static_cast<EFrame>(servoArray[4]) == FRAME_END) {
+                        std::cout<<"Servo frame complete!"<<std::endl;
+                        m_wheatley.tilt_servo = servoArray[0] << 8 | servoArray[1];
+                        m_wheatley.roll_servo = servoArray[2] << 8 | servoArray[3];
+                    }
+                    m_receiverState = NONE;
+                }
+                break;
+            default:
+                m_receiverState = NONE;
+                break;
         }
     }
-    //else
-        //qDebug()<<"empty";
-
-    //qDebug()<<"end";
 }
 
 
 void MainWindow::on_spinBox_roll_valueChanged(int roll)
 {
-    Wheatley->y_angle = (double(roll));
-    PCTransfer_Struct->y_desired = Wheatley->y_angle;
+    m_wheatley.roll_servo = roll;
+    m_pcServoMsg.roll = roll;
 }
 
 void MainWindow::on_spinBox_tilt_valueChanged(int tilt)
 {
-    Wheatley->x_angle = (double(tilt));
-    PCTransfer_Struct->x_desired = Wheatley->x_angle;
+    m_wheatley.tilt_servo = tilt;
+    m_pcServoMsg.tilt = tilt;
 }
 
-void MainWindow::on_xboxButton_clicked()
-{
+//void MainWindow::on_xboxButton_clicked()
+//{
 
-}
+//}
 
 
 void MainWindow::on_controller_comboBox_activated(int index)
 {
-    if (index == 0) //Screen Joystick
-    {
+    if (index == 0) { //Screen Joystick
         ui->xboxButton->setEnabled(false);
-        QObject::connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
-        disconnect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),this,SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
-
+        disconnect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
+        connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
-    else if(index == 1) //Xbox controller
-    {
+    else if(index == 1) { //Xbox controller
         ui->xboxButton->setEnabled(true);
-        QObject::disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
-        connect(controller,SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)),this,SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
+        disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
+        connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }
-    else if(index == 2) //Step while recording
-    {
-        QObject::disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
+    else if(index == 2) { //Step while recording
+        disconnect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
+        disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
 }
 
-void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState GamepadState){
-    currentGamepadState=GamepadState;
-    float mul=0.5;
-    if(currentGamepadState.rightTrigger>0.5)
-        mul=1;
-    else
-        mul=0.5;
-    Wheatley->x_angle = 100+currentGamepadState.rightThumbX*100;
-    Wheatley->y_angle = (100+mul*currentGamepadState.leftThumbY*100);
+void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
+    float mul = 0.5f;
 
-    PCTransfer_Struct->x_desired = Wheatley->x_angle;
-    PCTransfer_Struct->y_desired = Wheatley->y_angle;
-    ui->spinBox_roll->setValue(PCTransfer_Struct->y_desired);
-    ui->spinBox_tilt->setValue(PCTransfer_Struct->x_desired);
+    if(gamePadState.rightTrigger > 0.5f) {
+        mul = 1.f;
+    } else {
+        mul = 0.5f;
+    }
+
+    const float tilt = 100 + 100 * m_gamepadInputState.rightThumbX;
+    const float roll = 100 + 100 * mul * m_gamepadInputState.leftThumbY;
+
+    m_wheatley.tilt_servo = int(tilt);
+    m_wheatley.roll_servo = int(roll);
+    m_pcServoMsg.tilt = uint8_t(tilt);
+    m_pcServoMsg.roll = uint8_t(roll);
+    ui->spinBox_tilt->setValue(int(tilt));
+    ui->spinBox_roll->setValue(int(roll));
 }

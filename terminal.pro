@@ -10,7 +10,6 @@ SOURCES += \
     settingsdialog.cpp \
     console.cpp \
     serialhandler.cpp \
-    Queue.cpp \
     gamepaddisplay.cpp
 
 HEADERS += \

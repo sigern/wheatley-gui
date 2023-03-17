@@ -1,45 +1,39 @@
 #include "Queue.h"
 
-
-
-
 Queue::Queue(Queue *parent)
 {
-    Data = new  unsigned char[QUEUE_SIZE];
-    for(int i =0; i<QUEUE_SIZE; i++)
-    {
-        Data[i]=0;
+    m_pData = new unsigned char[QUEUE_SIZE];
+    for(int i =0; i < QUEUE_SIZE; i++){
+        m_pData[i] = 0;
     }
-    DataIn = 0;
-    DataOut = 0;
+    m_dataIn = 0;
+    m_dataOut = 0;
 }
 
 Queue::~Queue()
 {
-    delete[] Data;
+    delete[] m_pData;
 }
 
-int Queue::Push(unsigned char new_element)
+int Queue::push(unsigned char new_element)
 {
-  if(DataIn == (( DataOut - 1 + QUEUE_SIZE) % QUEUE_SIZE))
-  {
-    return -1; /* Queue Full*/
-  }
+    if(m_dataIn == (( m_dataOut - 1 + QUEUE_SIZE) % QUEUE_SIZE)) {
+        return -1; /* Queue Full*/
+    }
 
-  Data[DataIn] = new_element;
-  DataIn = (DataIn + 1) % QUEUE_SIZE;
+    m_pData[m_dataIn] = new_element;
+    m_dataIn = (m_dataIn + 1) % QUEUE_SIZE;
 
   return 0; // No errors
 }
 
-int Queue::Pop(unsigned char *old_element)
+int Queue::pop(unsigned char *old_element)
 {
-  if(DataIn == DataOut)
-  {
-    return -1; /* Queue Empty - nothing to get*/
-  }
-  *old_element = Data[DataOut];
-  DataOut = (DataOut + 1) % QUEUE_SIZE;
+    if(m_dataIn == m_dataOut) {
+        return -1; /* Queue Empty - nothing to get*/
+    }
+    *old_element = m_pData[m_dataOut];
+    m_dataOut = (m_dataOut + 1) % QUEUE_SIZE;
 
-  return 0; // No errors
+    return 0; // No errors
 }
