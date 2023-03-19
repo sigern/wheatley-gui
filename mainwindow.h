@@ -40,7 +40,6 @@
 #include <QQmlError>
 #include <QtWidgets>
 #include <QtSerialPort/QSerialPort>
-#include <QGroupBox>
 #include <QFile>
 
 #include "Queue.h"
@@ -72,6 +71,7 @@ enum EReceiverState {
     CHECK,
     SERVO
 };
+
 //             SENSOR_READY, ACC_READY, GYRO_READY, MAG_READY,
 //             SENSOR_COMMAND, SENDING_DN_COMMAND, SAMPLE, RECORDING_DN_COMMAND, PARAMETER_COMMAND, VOL_1, VOL_2,
 //             FLOAT_Y1, FLOAT_Y2, FLOAT_Y3, FLOAT_Y4,
@@ -162,6 +162,10 @@ public:
     static const char parameter_frame      = 0xF0;
     static const char alg_frame            = 0xEF;
 
+    static const char SERVO_INPUT_MIN = 0;
+    static const char SERVO_INPUT_ZERO = 120;
+    static const char SERVO_INPUT_NAX = 240;
+
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
@@ -182,6 +186,8 @@ private slots:
 
     void on_spinBox_roll_valueChanged(int arg1);
     void on_spinBox_tilt_valueChanged(int arg1);
+    void on_sliderRoll_valueChanged(int roll);
+    void on_sliderTilt_valueChanged(int tilt);
     //void on_xboxButton_clicked();
     void on_controller_comboBox_activated(int index);
 
@@ -189,9 +195,8 @@ private:
     void connectSignals();
     void updateUiControlValues();
 
-    QGroupBox *FirstGroup();
-    QQuickWidget *m_quickWidget;
-    QObject *rootObject;
+    QObject *stickObject;
+    QObject *joyStickObject;
 
     Ui::MainWindow *ui;
     Console *m_console;

@@ -2,39 +2,44 @@ import QtQuick 2.0
 
 Item {
     id:joyStick;
-    property int offset:30;
 
     signal joystickChanged(int x, int y);
 
     Rectangle {
        id:entireArea
-       color:"LightGray"
+       color:"dimgray"
        width:parent.width;height:parent.height
     }
 
     Rectangle {
         id:totalArea
-        color:"Gray"
+        color:"black"
         radius: parent.width/2
-        width:parent.width;height:parent.height
+        width:parent.width
+        height:parent.height
     }
 
     Rectangle{
         id:stick
+        objectName:"stick"
         width:totalArea.width/5; height: width
         radius: width/2
-        x: totalArea.width/2 - radius;
-        y: totalArea.height/2 - radius;
-        color:"black"
+        x: totalArea.width/2 - radius
+        y: totalArea.height/2 - radius
+        color:"#FF398585"
     }
 
     MouseArea{
         id:mouseArea
         anchors.fill: parent
 
-        //onPressed: {
-        //    joyStick.pressed();
-        //}
+        onPressed: {
+              stick.color = "#FF67F0F0"
+        }
+
+        onReleased: {
+            stick.color = "#FF398585"
+        }
 
         onPositionChanged:
         {
@@ -128,7 +133,19 @@ Item {
             stick.y = totalArea.height/2 - stick.radius;
             joyStick.joystickChanged(stick.x,stick.y);
         }
+    }
 
+    function setEnabled(isEnabled) {
+        if(isEnabled)
+        {
+            totalArea.color = "grey"
+            stick.color = "dimgray"
+        }
+        else
+        {
+            totalArea.color = "black"
+            stick.color = "#FF398585"
+        }
     }
 
     Text
@@ -137,6 +154,7 @@ Item {
         anchors.left: totalArea.left;
         anchors.leftMargin: 4;
         text: "Left"
+        color:"white"
     }
     Text
     {
@@ -144,6 +162,7 @@ Item {
         anchors.top: totalArea.top;
         anchors.topMargin: 4;
         text: "Forward"
+        color:"white"
     }
     Text
     {
@@ -151,6 +170,7 @@ Item {
         anchors.right: totalArea.right;
         anchors.rightMargin: 4;
         text: "Right"
+        color:"white"
     }
     Text
     {
@@ -158,6 +178,7 @@ Item {
         anchors.bottom: totalArea.bottom;
         anchors.bottomMargin: 4;
         text: "Backward"
+        color:"white"
     }
     Text
     {
@@ -166,5 +187,4 @@ Item {
         text: "+"
         color: "white"
     }
-
 }

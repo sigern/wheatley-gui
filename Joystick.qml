@@ -8,9 +8,10 @@ Rectangle
     MyItem
     {
         id:joyStick
+        objectName:"joyStick"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        width:250;height:250
+        width:300;height:300
         //onClicked: joystickChanged()
     }
 

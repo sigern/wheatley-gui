@@ -34,6 +34,7 @@
 
 #include "mainwindow.h"
 #include "Queue.h"
+#include "qobjectdefs.h"
 #include "ui_mainwindow.h"
 #include "console.h"
 #include "gamepaddisplay.h"
@@ -49,7 +50,6 @@
 //! [0]
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    m_quickWidget(new QQuickWidget),
     ui(new Ui::MainWindow)
 {
 //! [0]
@@ -61,32 +61,31 @@ MainWindow::MainWindow(QWidget *parent) :
     QVBoxLayout *vbox = new QVBoxLayout;
     vbox->addWidget(m_console);
     ui->console_group->setLayout(vbox);
-    //ui->console_group->setFixedHeight(300);
-    //ui->console_group->setFixedWidth(480);
-    //ui->control_group->setFixedHeight(210);
+//    ui->console_group->setFixedHeight(300);
+//    ui->console_group->setFixedWidth(480);
 
-    QUrl source("qrc:/Joystick.qml");
-    QGridLayout *gridJoystickLayout = new QGridLayout;
-    QVBoxLayout *verticalJoystickLayout = new QVBoxLayout;
+//    QUrl source("qrc:/Joystick.qml");
+//    ui->joystickQuickItemLayout->addWidget(m_quickWidget);
+//    ui->joystick_group->setFixedHeight(1000);
+//    ui->joystick_group->setFixedWidth(1000);
+//    m_quickWidget ->resize(100,100);
+//      m_quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView );
+//      m_quickWidget->setSource(source);
 
-    gridJoystickLayout->addWidget(m_quickWidget, 1, 1, 1, 1);
-    ui->joystick_group->setLayout(gridJoystickLayout);
-   // ui->joystick_group->setFixedHeight(300);
-   // ui->joystick_group->setFixedWidth(300);
-    m_quickWidget ->resize(100,100);
-    m_quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView );
-    m_quickWidget->setSource(source);
-    //ui->control_group->setFixedHeight(250);
 
-    rootObject = dynamic_cast<QObject*>(m_quickWidget->rootObject());
-    QObject::connect(rootObject, SIGNAL(joystickChanged(int, int)), this, SLOT(changeDesired(int, int)));
+   // rootObject = dynamic_cast<QObject*>(m_quickWidget->rootObject());
+    QObject::connect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int, int)), this, SLOT(changeDesired(int, int)));
 
     ui->lipol_val->setText(QString::number(0,'f',2)+" V");
     ui->roll_val->setText(QString::number(0,'f',1));
     ui->tilt_val->setText(QString::number(0,'f',1));
     ui->velocity_val->setText(QString::number(0,'f',1));
-    ui->spinBox_roll->setValue(0);
-    ui->spinBox_tilt->setValue(0);
+
+    ui->spinBox_roll->setValue(SERVO_INPUT_ZERO);
+    ui->spinBox_tilt->setValue(SERVO_INPUT_ZERO);
+    ui->sliderRoll->setValue(SERVO_INPUT_ZERO);
+    ui->sliderTilt->setValue(SERVO_INPUT_ZERO);
+
 //    ui->p_value->setText(QString::number(0,'f',1));
 //    ui->i_value->setText(QString::number(0,'f',1));
 //    ui->d_value->setText(QString::number(0,'f',1));
@@ -103,6 +102,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->actionQuit->setEnabled(true);
     ui->actionConfigure->setEnabled(true);
     ui->xboxButton->setEnabled(false);
+
+    stickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("stick");
+    joyStickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("joyStick");
 
     connectSignals();
 }
@@ -132,6 +134,7 @@ void MainWindow::openSerialPort()
         ui->actionConnect->setEnabled(false);
         ui->actionConfigure->setEnabled(false);
         ui->actionDisconnect->setEnabled(true);
+        ui->status_val->setText("CONNECTED");
         ui->statusBar->showMessage(tr("Connected to %1 : %2, %3, %4, %5, %6")
                                    .arg(p.name).arg(p.stringBaudRate).arg(p.stringDataBits)
                                    .arg(p.stringParity).arg(p.stringStopBits).arg(p.stringFlowControl));
@@ -160,6 +163,7 @@ void MainWindow::closeSerialPort()
     ui->actionDisconnect->setEnabled(false);
     ui->actionConfigure->setEnabled(true);
     ui->statusBar->showMessage(tr("Disconnected"));
+    ui->status_val->setText("DISCONNECTED");
 
     m_console->putData("*** Connection aborted by user ***\n");
 
@@ -348,7 +352,9 @@ void MainWindow::changeDesired(int tilt, int roll)
     if(index == 0)
     {
         m_wheatley.tilt_servo = tilt;
-        m_wheatley.roll_servo = -roll + 200;
+        m_wheatley.roll_servo = roll;
+        ui->spinBox_tilt->setValue(int(tilt));
+        ui->spinBox_roll->setValue(int(roll));
     }
 
 
@@ -424,6 +430,12 @@ void MainWindow::connectSignals()
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
     connect(ui->xboxButton, SIGNAL(clicked()), m_gamepadDisplay, SLOT(show()));
+
+    connect(ui->spinBox_roll, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_roll_valueChanged(int)));
+    connect(ui->spinBox_tilt, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_tilt_valueChanged(int)));
+
+    connect(ui->sliderRoll, SIGNAL(valueChanged(int)), this, SLOT(on_sliderRoll_valueChanged(int)));
+    connect(ui->sliderTilt, SIGNAL(valueChanged(int)), this, SLOT(on_sliderTilt_valueChanged(int)));
 }
 
 //void MainWindow::on_actionConnect_triggered()
@@ -505,12 +517,36 @@ void MainWindow::on_spinBox_roll_valueChanged(int roll)
 {
     m_wheatley.roll_servo = roll;
     m_pcServoMsg.roll = roll;
+
+    ui->sliderRoll->setValue(roll);
 }
 
 void MainWindow::on_spinBox_tilt_valueChanged(int tilt)
 {
     m_wheatley.tilt_servo = tilt;
     m_pcServoMsg.tilt = tilt;
+
+    ui->sliderTilt->setValue(tilt);
+}
+
+void MainWindow::on_sliderRoll_valueChanged(int roll)
+{
+    m_wheatley.roll_servo = roll;
+    m_pcServoMsg.roll = roll;
+
+    ui->spinBox_roll->setValue(roll);
+
+    stickObject->setProperty("y", roll);
+}
+
+void MainWindow::on_sliderTilt_valueChanged(int tilt)
+{
+    m_wheatley.tilt_servo = tilt;
+    m_pcServoMsg.tilt = tilt;
+
+    ui->spinBox_tilt->setValue(tilt);
+
+    stickObject->setProperty("x", tilt);
 }
 
 //void MainWindow::on_xboxButton_clicked()
@@ -521,23 +557,33 @@ void MainWindow::on_spinBox_tilt_valueChanged(int tilt)
 
 void MainWindow::on_controller_comboBox_activated(int index)
 {
+
     if (index == 0) { //Screen Joystick
         ui->xboxButton->setEnabled(false);
+        ui->joystickQuickItem->setEnabled(true);
+        ui->sliderRoll->setEnabled(true);
+        ui->sliderTilt->setEnabled(true);
+        ui->spinBox_roll->setEnabled(true);
+        ui->spinBox_tilt->setEnabled(true);
+        QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, false));
         disconnect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
-        connect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
+        connect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
     else if(index == 1) { //Xbox controller
         ui->xboxButton->setEnabled(true);
-        disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
+        ui->joystickQuickItem->setEnabled(false);
+        ui->sliderRoll->setEnabled(false);
+        ui->sliderTilt->setEnabled(false);
+        ui->spinBox_roll->setEnabled(false);
+        ui->spinBox_tilt->setEnabled(false);
+        QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, true));
+        disconnect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
-    }
-    else if(index == 2) { //Step while recording
-        disconnect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
-        disconnect(rootObject, SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
 }
 
 void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
+   // m_gamepadInputState = gamePadState;
     float mul = 0.5f;
 
     if(gamePadState.rightTrigger > 0.5f) {
@@ -546,8 +592,8 @@ void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadSt
         mul = 0.5f;
     }
 
-    const float tilt = 100 + 100 * m_gamepadInputState.rightThumbX;
-    const float roll = 100 + 100 * mul * m_gamepadInputState.leftThumbY;
+    const float tilt = SERVO_INPUT_ZERO + SERVO_INPUT_ZERO * gamePadState.rightThumbX;
+    const float roll = SERVO_INPUT_ZERO + SERVO_INPUT_ZERO * mul * gamePadState.leftThumbY;
 
     m_wheatley.tilt_servo = int(tilt);
     m_wheatley.roll_servo = int(roll);
