@@ -138,13 +138,13 @@ Item {
     function setEnabled(isEnabled) {
         if(isEnabled)
         {
-            totalArea.color = "grey"
-            stick.color = "dimgray"
+            totalArea.color = "black"
+            stick.color = "#FF398585"
         }
         else
         {
-            totalArea.color = "black"
-            stick.color = "#FF398585"
+            totalArea.color = "grey"
+            stick.color = "dimgray"
         }
     }
 

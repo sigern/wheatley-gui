@@ -56,7 +56,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //this->setFixedSize(810,610);
     ui->setupUi(this);
     m_console = new Console;
-    m_console->setEnabled(false);
+    m_console->setEnabled(false);    
     //setCentralWidget(console);
     QVBoxLayout *vbox = new QVBoxLayout;
     vbox->addWidget(m_console);
@@ -76,15 +76,6 @@ MainWindow::MainWindow(QWidget *parent) :
    // rootObject = dynamic_cast<QObject*>(m_quickWidget->rootObject());
     QObject::connect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int, int)), this, SLOT(changeDesired(int, int)));
 
-    ui->lipol_val->setText(QString::number(0,'f',2)+" V");
-    ui->roll_val->setText(QString::number(0,'f',1));
-    ui->tilt_val->setText(QString::number(0,'f',1));
-    ui->velocity_val->setText(QString::number(0,'f',1));
-
-    ui->spinBox_roll->setValue(SERVO_INPUT_ZERO);
-    ui->spinBox_tilt->setValue(SERVO_INPUT_ZERO);
-    ui->sliderRoll->setValue(SERVO_INPUT_ZERO);
-    ui->sliderTilt->setValue(SERVO_INPUT_ZERO);
 
 //    ui->p_value->setText(QString::number(0,'f',1));
 //    ui->i_value->setText(QString::number(0,'f',1));
@@ -97,15 +88,24 @@ MainWindow::MainWindow(QWidget *parent) :
     m_gamepadController = new SimpleXbox360Controller(0);
     m_gamepadController->startAutoPolling(20);
 
+    stickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("stick");
+    joyStickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("joyStick");
+
+    ui->lipol_val->setText(QString::number(0,'f',2)+" V");
+    ui->roll_val->setText(QString::number(0,'f',1));
+    ui->tilt_val->setText(QString::number(0,'f',1));
+    ui->velocity_val->setText(QString::number(0,'f',1));
+    ui->spinBox_roll->setValue(SERVO_INPUT_ZERO);
+    ui->spinBox_tilt->setValue(SERVO_INPUT_ZERO);
+    ui->sliderRoll->setValue(SERVO_INPUT_ZERO);
+    ui->sliderTilt->setValue(SERVO_INPUT_ZERO);
     ui->actionConnect->setEnabled(true);
     ui->actionDisconnect->setEnabled(false);
     ui->actionQuit->setEnabled(true);
     ui->actionConfigure->setEnabled(true);
     ui->xboxButton->setEnabled(false);
 
-    stickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("stick");
-    joyStickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("joyStick");
-
+    setControlsEnabled(false);
     connectSignals();
 }
 
@@ -134,12 +134,13 @@ void MainWindow::openSerialPort()
         ui->actionConnect->setEnabled(false);
         ui->actionConfigure->setEnabled(false);
         ui->actionDisconnect->setEnabled(true);
-        ui->status_val->setText("CONNECTED");
+        ui->status_val->setText("<font color='green'>CONNECTED</font>");
         ui->statusBar->showMessage(tr("Connected to %1 : %2, %3, %4, %5, %6")
                                    .arg(p.name).arg(p.stringBaudRate).arg(p.stringDataBits)
                                    .arg(p.stringParity).arg(p.stringStopBits).arg(p.stringFlowControl));
         m_console->putData("*** Connection successfully established ***\n");
 
+        setControlsEnabled(true);
         //senderTimer->start(1);
         m_receiverTimer.start(100);
         std::cout<<"Startimg timers"<<std::endl;
@@ -162,8 +163,9 @@ void MainWindow::closeSerialPort()
     ui->actionConnect->setEnabled(true);
     ui->actionDisconnect->setEnabled(false);
     ui->actionConfigure->setEnabled(true);
+    setControlsEnabled(false);
     ui->statusBar->showMessage(tr("Disconnected"));
-    ui->status_val->setText("DISCONNECTED");
+    ui->status_val->setText("<font color='red'>DISCONNECTED</font>");
 
     m_console->putData("*** Connection aborted by user ***\n");
 
@@ -554,36 +556,36 @@ void MainWindow::on_sliderTilt_valueChanged(int tilt)
 
 //}
 
+void MainWindow::setControlsEnabled(bool isEnabled)
+{
+    ui->joystickQuickItem->setEnabled(isEnabled);
+    ui->sliderRoll->setEnabled(isEnabled);
+    ui->sliderTilt->setEnabled(isEnabled);
+    ui->spinBox_roll->setEnabled(isEnabled);
+    ui->spinBox_tilt->setEnabled(isEnabled);
+    QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, isEnabled));
+}
 
 void MainWindow::on_controller_comboBox_activated(int index)
 {
+    ui->spinBox_roll->setValue(SERVO_INPUT_ZERO);
+    ui->spinBox_tilt->setValue(SERVO_INPUT_ZERO);
 
     if (index == 0) { //Screen Joystick
         ui->xboxButton->setEnabled(false);
-        ui->joystickQuickItem->setEnabled(true);
-        ui->sliderRoll->setEnabled(true);
-        ui->sliderTilt->setEnabled(true);
-        ui->spinBox_roll->setEnabled(true);
-        ui->spinBox_tilt->setEnabled(true);
-        QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, false));
+        setControlsEnabled(true);
         disconnect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
         connect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
     }
     else if(index == 1) { //Xbox controller
         ui->xboxButton->setEnabled(true);
-        ui->joystickQuickItem->setEnabled(false);
-        ui->sliderRoll->setEnabled(false);
-        ui->sliderTilt->setEnabled(false);
-        ui->spinBox_roll->setEnabled(false);
-        ui->spinBox_tilt->setEnabled(false);
-        QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, true));
+        setControlsEnabled(false);
         disconnect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }
 }
 
 void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
-   // m_gamepadInputState = gamePadState;
     float mul = 0.5f;
 
     if(gamePadState.rightTrigger > 0.5f) {

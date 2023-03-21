@@ -192,6 +192,7 @@ private slots:
     void on_controller_comboBox_activated(int index);
 
 private:
+    void setControlsEnabled(bool isEnabled);
     void connectSignals();
     void updateUiControlValues();
 
