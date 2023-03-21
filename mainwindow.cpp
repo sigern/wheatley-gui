@@ -142,7 +142,7 @@ void MainWindow::openSerialPort()
 
         setControlsEnabled(true);
         //senderTimer->start(1);
-        m_receiverTimer.start(100);
+        m_receiverTimer.start(80);
         std::cout<<"Startimg timers"<<std::endl;
     }
     else
@@ -205,7 +205,7 @@ void MainWindow::readData()
     const char* pIncomingCharData = incomingData.constData();
     if (!incomingData.isEmpty()) {
         std::stringstream ss;
-        ss << "Read " << incomingData.size() <<" bytes:";
+        ss << "Queue: " << m_receiverQueue.size() << " Read " << incomingData.size() <<" bytes:";
         for(int i = 0; i < incomingData.size(); i++) {
             ss <<std::hex<< " " << int(*(pIncomingCharData + i) & 0xFF);
         }
@@ -338,12 +338,12 @@ void MainWindow::readData()
 
 }
 
-void MainWindow::updateUiControlValues()
+void MainWindow::updateUiLiveRobotParameters()
 {
     ui->lipol_val->setText(QString::number(m_wheatley.lipol_vol, 'f', 2)+" V");
-    ui->roll_val->setText(QString::number(m_wheatley.roll_servo, 'i', 1));
-    ui->tilt_val->setText(QString::number(m_wheatley.roll_servo, 'i', 1));
     ui->velocity_val->setText(QString::number(m_wheatley.velocity, 'f', 1));
+    ui->roll_val->setText(QString::number(m_wheatley.roll_servo, 'i', 1));
+    ui->tilt_val->setText(QString::number(m_wheatley.tilt_servo, 'i', 1));
 }
 
 void MainWindow::changeDesired(int tilt, int roll)
@@ -351,12 +351,9 @@ void MainWindow::changeDesired(int tilt, int roll)
 //    ui->x_desired_val->setText(QString::number(x,'f',1));
 //    ui->y_desired_val->setText(QString::number((-y+200),'f',1));
     int index = ui->controller_comboBox->currentIndex();
-    if(index == 0)
-    {
-        m_wheatley.tilt_servo = tilt;
-        m_wheatley.roll_servo = roll;
+    if(index == 0) {
         ui->spinBox_tilt->setValue(int(tilt));
-        ui->spinBox_roll->setValue(int(roll));
+        ui->spinBox_roll->setValue(int(SERVO_INPUT_MAX - roll));
     }
 
 
@@ -474,35 +471,62 @@ void MainWindow::handleParserTimeout()
     if (!m_receiverQueue.empty())
     {
         char el = m_receiverQueue.front();
-        //qDebug()<<"command = "<<command;
         switch(m_receiverState) {
             case NONE:
-                if(static_cast<EFrame>(el) == FRAME_START) {
+                if (static_cast<EFrame>(el) == FRAME_START) {
                     m_receiverState = CHECK;
                     m_receiverQueue.pop();
                     std::cout<<"case NONE"<<std::endl;
                 }
                 break;
             case CHECK:
-                if(static_cast<EFrame>(el) == FRAME_TYPE_SERVO_VALUE) {
+                if (static_cast<EFrame>(el) == FRAME_TYPE_SERVO) {
                     m_receiverState = SERVO;
                     std::cout<<"case SERVO"<<std::endl;
+                } else if (static_cast<EFrame>(el) == FRAME_TYPE_LIPOL) {
+                    m_receiverState = LIPOL;
+                    std::cout<<"case LIPOL"<<std::endl;
+                } else if (static_cast<EFrame>(el) == FRAME_TYPE_VELOCITY) {
+                    m_receiverState = VELOCITY;
+                    std::cout<<"case VELOCITY"<<std::endl;
                 } else {
                     m_receiverState = NONE;
                 }
                 m_receiverQueue.pop();
-                //qDebug()<<"case CHECK";
                 break;
             case SERVO:
                 if (m_receiverQueue.size() >= 5) {
                     char servoArray[5] = {0};
                     m_receiverQueue.popN(servoArray, 5);
-                    std::cout<<"Tilt: "<<std::hex<<servoArray[0]<<", "<<servoArray[1]<<std::endl;
-                    std::cout<<"Roll: "<<std::hex<<servoArray[2]<<", "<<servoArray[3]<<std::endl;
                     if (static_cast<EFrame>(servoArray[4]) == FRAME_END) {
                         std::cout<<"Servo frame complete!"<<std::endl;
-                        m_wheatley.tilt_servo = servoArray[0] << 8 | servoArray[1];
-                        m_wheatley.roll_servo = servoArray[2] << 8 | servoArray[3];
+                        m_wheatley.tilt_servo = uint8_t(servoArray[0]) << 8 | uint8_t(servoArray[1]);
+                        m_wheatley.roll_servo = uint8_t(servoArray[2]) << 8 | uint8_t(servoArray[3]);
+                        updateUiLiveRobotParameters();
+                    }
+                    m_receiverState = NONE;
+                }
+                break;
+            case LIPOL:
+                if (m_receiverQueue.size() >= 3) {
+                    char lipolArray[3] = {0};
+                    m_receiverQueue.popN(lipolArray, 3);
+                    if (static_cast<EFrame>(lipolArray[3]) == FRAME_END) {
+                        std::cout<<"Lipol frame complete!"<<std::endl;
+                        m_wheatley.lipol_vol = uint8_t(lipolArray[0]) << 8 | uint8_t(lipolArray[1]);
+                        updateUiLiveRobotParameters();
+                    }
+                    m_receiverState = NONE;
+                }
+                break;
+            case VELOCITY:
+                if (m_receiverQueue.size() >= 3) {
+                    char velocityArray[3] = {0};
+                    m_receiverQueue.popN(velocityArray, 3);
+                    if (static_cast<EFrame>(velocityArray[3]) == FRAME_END) {
+                        std::cout<<"Velocity frame complete!"<<std::endl;
+                        m_wheatley.velocity = uint8_t(velocityArray[0]) << 8 | uint8_t(velocityArray[1]);
+                        updateUiLiveRobotParameters();
                     }
                     m_receiverState = NONE;
                 }
@@ -517,15 +541,12 @@ void MainWindow::handleParserTimeout()
 
 void MainWindow::on_spinBox_roll_valueChanged(int roll)
 {
-    m_wheatley.roll_servo = roll;
     m_pcServoMsg.roll = roll;
-
     ui->sliderRoll->setValue(roll);
 }
 
 void MainWindow::on_spinBox_tilt_valueChanged(int tilt)
 {
-    m_wheatley.tilt_servo = tilt;
     m_pcServoMsg.tilt = tilt;
 
     ui->sliderTilt->setValue(tilt);
@@ -533,21 +554,15 @@ void MainWindow::on_spinBox_tilt_valueChanged(int tilt)
 
 void MainWindow::on_sliderRoll_valueChanged(int roll)
 {
-    m_wheatley.roll_servo = roll;
     m_pcServoMsg.roll = roll;
-
     ui->spinBox_roll->setValue(roll);
-
-    stickObject->setProperty("y", roll);
+    stickObject->setProperty("y", SERVO_INPUT_MAX - roll);
 }
 
 void MainWindow::on_sliderTilt_valueChanged(int tilt)
 {
-    m_wheatley.tilt_servo = tilt;
     m_pcServoMsg.tilt = tilt;
-
     ui->spinBox_tilt->setValue(tilt);
-
     stickObject->setProperty("x", tilt);
 }
 
@@ -597,8 +612,6 @@ void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadSt
     const float tilt = SERVO_INPUT_ZERO + SERVO_INPUT_ZERO * gamePadState.rightThumbX;
     const float roll = SERVO_INPUT_ZERO + SERVO_INPUT_ZERO * mul * gamePadState.leftThumbY;
 
-    m_wheatley.tilt_servo = int(tilt);
-    m_wheatley.roll_servo = int(roll);
     m_pcServoMsg.tilt = uint8_t(tilt);
     m_pcServoMsg.roll = uint8_t(roll);
     ui->spinBox_tilt->setValue(int(tilt));

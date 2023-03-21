@@ -69,7 +69,9 @@ enum EAlgorithm {
 enum EReceiverState {
     NONE,
     CHECK,
-    SERVO
+    SERVO,
+    LIPOL,
+    VELOCITY
 };
 
 //             SENSOR_READY, ACC_READY, GYRO_READY, MAG_READY,
@@ -83,7 +85,9 @@ enum EFrame : uint8_t {
     FRAME_START = 0xF0,
     FRAME_END   = 0xF1,
     FRAME_TYPE_JOYSTICK = 0xF2,
-    FRAME_TYPE_SERVO_VALUE = 0xF3
+    FRAME_TYPE_SERVO = 0xF3,
+    FRAME_TYPE_LIPOL = 0xF4,
+    FRAME_TYPE_VELOCITY = 0xF5
 };
 
 //static const char start_frame          = 0xFF;
@@ -118,8 +122,8 @@ typedef struct pcServoMsg
 
 typedef struct robotState
 {
-    int roll_servo = 100;
-    int tilt_servo = 100;
+    uint16_t roll_servo;
+    uint16_t tilt_servo;
     float x_angle;
     float y_angle;
     float velocity;
@@ -162,9 +166,9 @@ public:
     static const char parameter_frame      = 0xF0;
     static const char alg_frame            = 0xEF;
 
-    static const char SERVO_INPUT_MIN = 0;
-    static const char SERVO_INPUT_ZERO = 120;
-    static const char SERVO_INPUT_NAX = 240;
+    static const unsigned char SERVO_INPUT_MIN = 0;
+    static const unsigned char SERVO_INPUT_ZERO = 120;
+    static const unsigned char SERVO_INPUT_MAX = 240;
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -194,7 +198,7 @@ private slots:
 private:
     void setControlsEnabled(bool isEnabled);
     void connectSignals();
-    void updateUiControlValues();
+    void updateUiLiveRobotParameters();
 
     QObject *stickObject;
     QObject *joyStickObject;

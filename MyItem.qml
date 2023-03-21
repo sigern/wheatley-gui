@@ -34,97 +34,92 @@ Item {
         anchors.fill: parent
 
         onPressed: {
-              stick.color = "#FF67F0F0"
+            stick.color = "#FF67F0F0"
         }
 
         onReleased: {
             stick.color = "#FF398585"
+            //snap to center
+            stick.x = totalArea.width /2 - stick.radius;
+            stick.y = totalArea.height/2 - stick.radius;
+            joyStick.joystickChanged(stick.x,stick.y);
         }
 
         onPositionChanged:
         {
-         //(x-center_x)^2 + (y - center_y)^2 < radius^2
-         //if stick need to remain inside larger circle
-         //var rad = (totalArea.radius - stick.radius);
-         //if stick can go outside larger circle
-         var rad = totalArea.radius-stick.radius;
-         rad =  rad * rad;
+             //(x-center_x)^2 + (y - center_y)^2 < radius^2
+             //if stick need to remain inside larger circle
+             //var rad = (totalArea.radius - stick.radius);
+             //if stick can go outside larger circle
+             var rad = totalArea.radius-stick.radius;
+             rad =  rad * rad;
 
-         // calculate distance in x direction
-         var xDist = mouseX - (totalArea.x + totalArea.radius);
-         xDist = xDist * xDist;
+             // calculate distance in x direction
+             var xDist = mouseX - (totalArea.x + totalArea.radius);
+             xDist = xDist * xDist;
 
-         // calculate distance in y direction
-         var yDist = mouseY - (totalArea.y + totalArea.radius);
-         yDist = yDist * yDist;
+             // calculate distance in y direction
+             var yDist = mouseY - (totalArea.y + totalArea.radius);
+             yDist = yDist * yDist;
 
-         //total distance for inner circle
-         var dist = xDist + yDist;
+             //total distance for inner circle
+             var dist = xDist + yDist;
 
-        var over;
-        /*
-        //Circle mouse area
-        if(dist>rad)
-        {
-            over = 1;
+            var over;
+            /*
+            //Circle mouse area
+            if(dist>rad)
+            {
+                over = 1;
+            }
+            else
+            {
+                over = 0;
+            }
+            */
+            //Rectangle mouse area
+            if(yDist>rad || xDist>rad)
+            {
+                over = 1;
+            }
+            else
+            {
+                over = 0;
+            }
+
+             //center of larger circle
+             var oldX = stick.x; var oldY = stick.y;
+             var R = totalArea.radius-stick.radius;
+             var Y = mouseY-totalArea.height/2;
+             var X = mouseX-totalArea.width/2;
+             if (over==1)
+             {
+                 /*
+                 // cirlce mouse area
+                 stick.x = totalArea.width/2  - stick.radius + R*(X/Math.sqrt(X*X+Y*Y));
+                 stick.y = totalArea.height/2 - stick.radius + R*(Y/Math.sqrt(X*X+Y*Y));
+                 */
+
+                 //Rectangle mouse area
+                 stick.x = mouseX-stick.radius;
+                 stick.y = mouseY-stick.radius;
+                 if(X>R)
+                     stick.x = totalArea.width/2  - stick.radius + R;
+                 else if(X<-R)
+                     stick.x = 0;
+                 if(Y>R)
+                     stick.y = totalArea.height/2  - stick.radius + R;
+                 else if(Y<-R)
+                     stick.y = 0;
+             }
+             else
+             {
+                 stick.x = mouseX-stick.radius;
+                 stick.y = mouseY-stick.radius;
+             }
+
+            joyStick.joystickChanged(stick.x, stick.y);
         }
-        else
-        {
-            over = 0;
-        }      
-        */
-        //Rectangle mouse area
-        if(yDist>rad || xDist>rad)
-        {
-            over = 1;
-        }
-        else
-        {
-            over = 0;
-        }
-
-         //center of larger circle
-         var oldX = stick.x; var oldY = stick.y;
-         var R = totalArea.radius-stick.radius;
-         var Y = mouseY-totalArea.height/2;
-         var X = mouseX-totalArea.width/2;
-         if (over==1)
-         {
-             /*
-             // cirlce mouse area
-             stick.x = totalArea.width/2  - stick.radius + R*(X/Math.sqrt(X*X+Y*Y));
-             stick.y = totalArea.height/2 - stick.radius + R*(Y/Math.sqrt(X*X+Y*Y));
-             */
-
-             //Rectangle mouse area
-             stick.x = mouseX-stick.radius;
-             stick.y = mouseY-stick.radius;
-             if(X>R)
-                 stick.x = totalArea.width/2  - stick.radius + R;
-             else if(X<-R)
-                 stick.x = 0;
-             if(Y>R)
-                 stick.y = totalArea.height/2  - stick.radius + R;
-             else if(Y<-R)
-                 stick.y = 0;
-         }
-         else
-         {
-             stick.x = mouseX-stick.radius;
-             stick.y = mouseY-stick.radius;
-         }
-
-         joyStick.joystickChanged(stick.x,stick.y);
-        }
-
-        //onReleased:
-        //{
-            //snap to center
-           // stick.x = totalArea.width /2 - stick.radius;
-           // stick.y = totalArea.height/2 - stick.radius;
-
-        //    joyStick.released();
-       // }
 
         onDoubleClicked:
         {
