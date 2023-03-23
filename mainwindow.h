@@ -58,6 +58,10 @@ class SettingsDialog;
 class GamepadDisplay;
 class SimpleXbox360Controller;
 
+constexpr uint8_t JOYSTICK_MIN = 0;
+constexpr uint8_t JOYSTICK_ZERO = 120;
+constexpr uint8_t JOYSTICK_MAX = 240;
+
 enum EAlgorithm {
     X_NONE,
     X_PID,
@@ -74,13 +78,6 @@ enum EReceiverState {
     VELOCITY
 };
 
-//             SENSOR_READY, ACC_READY, GYRO_READY, MAG_READY,
-//             SENSOR_COMMAND, SENDING_DN_COMMAND, SAMPLE, RECORDING_DN_COMMAND, PARAMETER_COMMAND, VOL_1, VOL_2,
-//             FLOAT_Y1, FLOAT_Y2, FLOAT_Y3, FLOAT_Y4,
-//             ACCX_1,  ACCX_2,  ACCY_1,  ACCY_2,  ACCZ_1,  ACCZ_2,
-//             GYROX_1, GYROX_2, GYROY_1, GYROY_2, GYROZ_1, GYROZ_2,
-//             MAGX_1,  MAGX_2,  MAGY_1,  MAGY_2,  MAGZ_1,  MAGZ_2,
-//             MEAS_1,  MEAS_2,  MEAS_3,  MEAS_4};
 enum EFrame : uint8_t {
     FRAME_START = 0xF0,
     FRAME_END   = 0xF1,
@@ -90,47 +87,21 @@ enum EFrame : uint8_t {
     FRAME_TYPE_VELOCITY = 0xF5
 };
 
-//static const char start_frame          = 0xFF;
-//static const char end_frame            = 0xFE;
-//static const char separate_frame       = 0xFA;
-//static const char joystick_frame       = 0xFD;
-//static const char pid_frame            = 0xFC;
-//static const char control_frame        = 0xFB;
-//static const char sensor_frame         = 0xF9;
-//static const char receive_frame        = 0xF8;
-//static const char sending_done_frame   = 0xF7;
-//static const char record_frame         = 0xF6;
-//static const char recording_done_frame = 0xF5;
-//static const char parameter_frame      = 0xF0;
-//static const char alg_frame            = 0xEF;
-
-typedef struct robotMsg
+typedef struct joystickState
 {
-    unsigned int roll_servo;
-    unsigned int tilt_servo;
-    unsigned int lipol_vol;
-    unsigned int x_current;
-    unsigned int y_current;
-    unsigned int velocity;
-} RobotMsg_t;
-
-typedef struct pcServoMsg
-{
-    uint8_t tilt = 100;
-    uint8_t roll = 100;
-} PcServoMsg_t;
+    uint8_t tilt = JOYSTICK_ZERO;
+    uint8_t roll = JOYSTICK_ZERO;
+} JoystickState_t;
 
 typedef struct robotState
 {
-    uint16_t roll_servo;
-    uint16_t tilt_servo;
-    float x_angle;
-    float y_angle;
-    float velocity;
-    float lipol_vol;
-    float p_gain;
-    float i_gain;
-    float d_gain;
+    uint16_t tiltServo = 0u;
+    uint16_t rollServo = 0u;
+    float velocity = 0.f;
+    float lipolVol = 0.f;;
+    float gainP = 0.f;;
+    float gainI = 0.f;;
+    float gainD = 0.f;;
 } RobotState_t;
 
 typedef struct sensors
@@ -141,34 +112,14 @@ typedef struct sensors
      int sample;
 } Sensors_t;
 
-//typedef struct MeasurStruct
-//{
-//     long measur;
-//     int sample;
-//} sMeasurment;
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    static const char start_frame          = 0xFF;
-    static const char end_frame            = 0xFE;
-    static const char separate_frame       = 0xFA;
-    static const char joystick_frame       = 0xFD;
-    static const char pid_frame            = 0xFC;
-    static const char control_frame        = 0xFB;
-    static const char sensor_frame         = 0xF9;
-    static const char receive_frame        = 0xF8;
-    static const char sending_done_frame   = 0xF7;
-    static const char record_frame         = 0xF6;
-    static const char recording_done_frame = 0xF5;
-    static const char parameter_frame      = 0xF0;
-    static const char alg_frame            = 0xEF;
-
-    static const unsigned char SERVO_INPUT_MIN = 0;
-    static const unsigned char SERVO_INPUT_ZERO = 120;
-    static const unsigned char SERVO_INPUT_MAX = 240;
+    static const unsigned char JOYSTICK_MIN = 0;
+    static const unsigned char JOYSTICK_ZERO = 120;
+    static const unsigned char JOYSTICK_MAX = 240;
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -184,15 +135,13 @@ private slots:
 
     void handleError(QSerialPort::SerialPortError error);
 
-    //void on_actionConnect_triggered();
-    void handleTimeout();
+    void handleSenderTimeout();
     void handleParserTimeout();
 
     void on_spinBox_roll_valueChanged(int arg1);
     void on_spinBox_tilt_valueChanged(int arg1);
     void on_sliderRoll_valueChanged(int roll);
     void on_sliderTilt_valueChanged(int tilt);
-    //void on_xboxButton_clicked();
     void on_controller_comboBox_activated(int index);
 
 private:
@@ -214,29 +163,12 @@ private:
     QTimer m_receiverTimer;
 
     RobotState_t m_wheatley;
+    JoystickState_t m_joystick;
     EReceiverState m_receiverState = EReceiverState::NONE;
-    //Algorithm ControlType[2];
-
-    RobotMsg_t m_robotMsg;
-    PcServoMsg_t m_pcServoMsg;
 
     FixedQueue<char, 1000> m_receiverQueue;
     unsigned char *input;
     SimpleXbox360Controller::InputState m_gamepadInputState;
-
-    //    volatile char temp_RobotTransfer[12];
-    //    volatile char temp_PCTransfer[4];
-    //    SensorStruct Temp_SensorStruct;
-    //    SensorStruct Ready_SensorStruct;
-    //    MeasurStruct Temp_MeasurStruct;
-    //    MeasurStruct Ready_MeasurStruct;
-    //    FILE rec_file;
-    //    QFile *record_file;
-    //    volatile int iter;
-    //    volatile int sensor_count;
-    //    volatile long int float_y;
-    //    double step_rec_value;
-    //    int x;
 };
 
 #endif // MAINWINDOW_H

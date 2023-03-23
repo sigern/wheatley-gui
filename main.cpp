@@ -33,7 +33,6 @@
 ****************************************************************************/
 
 #include "mainwindow.h"
-#include "serialhandler.h"
 
 int main(int argc, char *argv[])
 {

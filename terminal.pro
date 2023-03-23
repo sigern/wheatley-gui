@@ -9,7 +9,6 @@ SOURCES += \
     SimpleXbox360Controller/simplexbox360controller.cpp \
     settingsdialog.cpp \
     console.cpp \
-    serialhandler.cpp \
     gamepaddisplay.cpp
 
 HEADERS += \
@@ -18,7 +17,6 @@ HEADERS += \
     SimpleXbox360Controller/simplexbox360controller.h \
     settingsdialog.h \
     console.h \
-    serialhandler.h \
     Queue.h \
     gamepaddisplay.h
 

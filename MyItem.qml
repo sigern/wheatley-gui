@@ -40,9 +40,9 @@ Item {
         onReleased: {
             stick.color = "#FF398585"
             //snap to center
-            stick.x = totalArea.width /2 - stick.radius;
-            stick.y = totalArea.height/2 - stick.radius;
-            joyStick.joystickChanged(stick.x,stick.y);
+            //stick.x = totalArea.width /2 - stick.radius;
+            //stick.y = totalArea.height/2 - stick.radius;
+            //joyStick.joystickChanged(stick.x,stick.y);
         }
 
         onPositionChanged:
