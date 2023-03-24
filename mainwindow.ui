@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>698</width>
-    <height>737</height>
+    <width>703</width>
+    <height>743</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -69,7 +69,7 @@
              <x>10</x>
              <y>30</y>
              <width>301</width>
-             <height>111</height>
+             <height>112</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -301,7 +301,7 @@
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QPushButton" name="pushButton">
+               <widget class="QPushButton" name="startServosButton">
                 <property name="font">
                  <font>
                   <bold>true</bold>
@@ -520,8 +520,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>698</width>
-     <height>21</height>
+     <width>703</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCalls">

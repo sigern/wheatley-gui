@@ -4,6 +4,7 @@ TARGET = terminal
 TEMPLATE = app
 
 SOURCES += \
+    crc.cpp \
     main.cpp \
     mainwindow.cpp \
     SimpleXbox360Controller/simplexbox360controller.cpp \
@@ -12,6 +13,7 @@ SOURCES += \
     gamepaddisplay.cpp
 
 HEADERS += \
+    crc.h \
     mainwindow.h \
     SimpleXbox360Controller/XInput.h \
     SimpleXbox360Controller/simplexbox360controller.h \

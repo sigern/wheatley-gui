@@ -84,7 +84,8 @@ enum EFrame : uint8_t {
     FRAME_TYPE_JOYSTICK = 0xF2,
     FRAME_TYPE_SERVO = 0xF3,
     FRAME_TYPE_LIPOL = 0xF4,
-    FRAME_TYPE_VELOCITY = 0xF5
+    FRAME_TYPE_VELOCITY = 0xF5,
+    FRAME_TYPE_SERVO_ENABLED = 0xF6
 };
 
 typedef struct joystickState
@@ -98,10 +99,10 @@ typedef struct robotState
     uint16_t tiltServo = 0u;
     uint16_t rollServo = 0u;
     float velocity = 0.f;
-    float lipolVol = 0.f;;
-    float gainP = 0.f;;
-    float gainI = 0.f;;
-    float gainD = 0.f;;
+    float lipolVol = 0.f;
+    float gainP = 0.f;
+    float gainI = 0.f;
+    float gainD = 0.f;
 } RobotState_t;
 
 typedef struct sensors
@@ -143,11 +144,16 @@ private slots:
     void on_sliderRoll_valueChanged(int roll);
     void on_sliderTilt_valueChanged(int tilt);
     void on_controller_comboBox_activated(int index);
+    void onServoButtonClicked();
 
 private:
     void setControlsEnabled(bool isEnabled);
     void connectSignals();
     void updateUiLiveRobotParameters();
+    void resetUiData();
+    void resetServoEnabledState();
+    void resetJoystickState();
+    void resetRobotState();
 
     QObject *stickObject;
     QObject *joyStickObject;
@@ -164,9 +170,10 @@ private:
 
     RobotState_t m_wheatley;
     JoystickState_t m_joystick;
+    bool m_servoEnabled = false;
     EReceiverState m_receiverState = EReceiverState::NONE;
 
-    FixedQueue<char, 1000> m_receiverQueue;
+    FixedQueue<char, 100> m_receiverQueue;
     unsigned char *input;
     SimpleXbox360Controller::InputState m_gamepadInputState;
 };

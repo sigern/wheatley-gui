@@ -34,6 +34,7 @@
 
 #include "mainwindow.h"
 #include "Queue.h"
+#include "crc.h"
 #include "qobjectdefs.h"
 #include "ui_mainwindow.h"
 #include "console.h"
@@ -70,19 +71,13 @@ MainWindow::MainWindow(QWidget *parent) :
     stickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("stick");
     joyStickObject = ui->joystickQuickItem->rootObject()->findChild<QObject*>("joyStick");
 
-    ui->lipol_val->setText(QString::number(0,'f',2)+" V");
-    ui->roll_val->setText(QString::number(0,'f',1));
-    ui->tilt_val->setText(QString::number(0,'f',1));
-    ui->velocity_val->setText(QString::number(0,'f',1));
-    ui->spinBox_roll->setValue(JOYSTICK_ZERO);
-    ui->spinBox_tilt->setValue(JOYSTICK_ZERO);
-    ui->sliderRoll->setValue(JOYSTICK_ZERO);
-    ui->sliderTilt->setValue(JOYSTICK_ZERO);
     ui->actionConnect->setEnabled(true);
     ui->actionDisconnect->setEnabled(false);
     ui->actionQuit->setEnabled(true);
     ui->actionConfigure->setEnabled(true);
     ui->xboxButton->setEnabled(false);
+
+    resetUiData();
 
     setControlsEnabled(false);
     connectSignals();
@@ -98,8 +93,38 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::resetUiData()
+{
+    resetServoEnabledState();
+    resetJoystickState();
+    resetRobotState();
+}
+
+void MainWindow::resetServoEnabledState()
+{
+    m_servoEnabled = false;
+    ui->startServosButton->setText("START");
+}
+
+void MainWindow::resetJoystickState()
+{
+    m_joystick = {JOYSTICK_ZERO, JOYSTICK_ZERO};
+    ui->spinBox_roll->setValue(JOYSTICK_ZERO);
+    ui->spinBox_tilt->setValue(JOYSTICK_ZERO);
+    ui->sliderRoll->setValue(JOYSTICK_ZERO);
+    ui->sliderTilt->setValue(JOYSTICK_ZERO);
+}
+
+void MainWindow::resetRobotState()
+{
+    m_wheatley = {0};
+    updateUiLiveRobotParameters();
+}
+
 void MainWindow::openSerialPort()
 {
+    resetUiData();
+
     SettingsDialog::Settings p = m_settings->settings();
     m_serialPort->setPortName(p.name);
     m_serialPort->setBaudRate(p.baudRate);
@@ -121,7 +146,7 @@ void MainWindow::openSerialPort()
 
         setControlsEnabled(true);
         m_senderTimer.start(15);
-        m_receiverTimer.start(20);
+        m_receiverTimer.start(5);
         std::cout<<"Startimg timers"<<std::endl;
     }
     else
@@ -135,6 +160,8 @@ void MainWindow::openSerialPort()
 
 void MainWindow::closeSerialPort()
 {
+    resetUiData();
+
     m_serialPort->close();
     m_console->setEnabled(false);
 
@@ -238,6 +265,7 @@ void MainWindow::connectSignals()
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
     connect(ui->xboxButton, SIGNAL(clicked()), m_gamepadDisplay, SLOT(show()));
+    connect(ui->startServosButton, SIGNAL(clicked()), this, SLOT(onServoButtonClicked()));
 
     connect(ui->spinBox_roll, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_roll_valueChanged(int)));
     connect(ui->spinBox_tilt, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_tilt_valueChanged(int)));
@@ -248,11 +276,14 @@ void MainWindow::connectSignals()
 
 void MainWindow::handleSenderTimeout()
 {
+    uint8_t crcInput[] = {m_joystick.tilt, m_joystick.roll};
+
     char joystickFrame[] = {
         static_cast<char>(FRAME_START),
         static_cast<char>(FRAME_TYPE_JOYSTICK),
         static_cast<char>(m_joystick.tilt),
         static_cast<char>(m_joystick.roll),
+        static_cast<char>(CRC8(crcInput, 2)),
         static_cast<char>(FRAME_END)
     };
     m_serialPort->write(joystickFrame, sizeof(joystickFrame));
@@ -330,7 +361,7 @@ void MainWindow::handleParserTimeout()
                 break;
         }
     } else {
-        std::cout<<"RX queue is empty!"<<std::endl;
+        //std::cout<<"RX queue is empty!"<<std::endl;
     }
 }
 
@@ -368,6 +399,8 @@ void MainWindow::setControlsEnabled(bool isEnabled)
     ui->sliderTilt->setEnabled(isEnabled);
     ui->spinBox_roll->setEnabled(isEnabled);
     ui->spinBox_tilt->setEnabled(isEnabled);
+    ui->startServosButton->setEnabled(isEnabled);
+    ui->controller_comboBox->setEnabled(isEnabled);
     QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, isEnabled));
 }
 
@@ -388,6 +421,20 @@ void MainWindow::on_controller_comboBox_activated(int index)
         disconnect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }
+}
+
+void MainWindow::onServoButtonClicked()
+{
+    m_servoEnabled = !m_servoEnabled;
+    ui->startServosButton->setText(m_servoEnabled ? "STOP" : "START");
+
+    char servoEnabledFrame[] = {
+        static_cast<char>(FRAME_START),
+        static_cast<char>(FRAME_TYPE_SERVO_ENABLED),
+        static_cast<char>(m_servoEnabled),
+        static_cast<char>(FRAME_END)
+    };
+    m_serialPort->write(servoEnabledFrame, sizeof(servoEnabledFrame));
 }
 
 void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
