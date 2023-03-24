@@ -4,18 +4,22 @@ TARGET = terminal
 TEMPLATE = app
 
 SOURCES += \
+    frameparserthread.cpp \
     main.cpp \
     mainwindow.cpp \
     SimpleXbox360Controller/simplexbox360controller.cpp \
+    senderthread.cpp \
     settingsdialog.cpp \
     console.cpp \
     serialhandler.cpp \
     gamepaddisplay.cpp
 
 HEADERS += \
+    frameparserthread.h \
     mainwindow.h \
     SimpleXbox360Controller/XInput.h \
     SimpleXbox360Controller/simplexbox360controller.h \
+    senderthread.h \
     settingsdialog.h \
     console.h \
     serialhandler.h \

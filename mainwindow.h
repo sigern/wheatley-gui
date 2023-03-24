@@ -44,6 +44,7 @@
 
 #include "Queue.h"
 #include "SimpleXbox360Controller/simplexbox360controller.h"
+#include "senderthread.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -206,6 +207,8 @@ private:
     SimpleXbox360Controller *m_gamepadController;
     QSerialPort *m_serialPort;
 
+    SenderThread m_senderThread;
+    FrameParserThread m_frameParserThread;
     QTimer m_senderTimer;
     QTimer m_receiverTimer;
 
