@@ -145,8 +145,8 @@ void MainWindow::openSerialPort()
         m_console->putData("*** Connection successfully established ***\n");
 
         setControlsEnabled(true);
-        m_senderTimer.start(15);
-        m_receiverTimer.start(5);
+        m_senderTimer.start(SENDER_PERIOD_IN_MS);
+        m_receiverTimer.start(RECEIVER_PERIOD_IN_MS);
         std::cout<<"Startimg timers"<<std::endl;
     }
     else
@@ -276,9 +276,10 @@ void MainWindow::connectSignals()
 
 void MainWindow::handleSenderTimeout()
 {
+    static int heartbeatCounter = 0;
     uint8_t crcInput[] = {m_joystick.tilt, m_joystick.roll};
 
-    char joystickFrame[] = {
+    const char joystickFrame[] = {
         static_cast<char>(FRAME_START),
         static_cast<char>(FRAME_TYPE_JOYSTICK),
         static_cast<char>(m_joystick.tilt),
@@ -286,7 +287,20 @@ void MainWindow::handleSenderTimeout()
         static_cast<char>(CRC8(crcInput, 2)),
         static_cast<char>(FRAME_END)
     };
+
     m_serialPort->write(joystickFrame, sizeof(joystickFrame));
+    if (heartbeatCounter >= HEARTBEAT_COUNTER_MAX) {
+        const char hearbeatFrame[] = {
+            static_cast<char>(FRAME_START),
+            static_cast<char>(FRAME_TYPE_HEARTBEAT),
+            static_cast<char>(FRAME_END)
+        };
+        m_serialPort->write(hearbeatFrame, sizeof(hearbeatFrame));
+        m_console->putData("*** Heartbeat frame sent ***\n");
+        heartbeatCounter = 0;
+    } else {
+        heartbeatCounter++;
+    }
 }
 
 void MainWindow::handleParserTimeout()

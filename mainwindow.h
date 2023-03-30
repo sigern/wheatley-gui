@@ -85,7 +85,8 @@ enum EFrame : uint8_t {
     FRAME_TYPE_SERVO = 0xF3,
     FRAME_TYPE_LIPOL = 0xF4,
     FRAME_TYPE_VELOCITY = 0xF5,
-    FRAME_TYPE_SERVO_ENABLED = 0xF6
+    FRAME_TYPE_SERVO_ENABLED = 0xF6,
+    FRAME_TYPE_HEARTBEAT = 0xF7
 };
 
 typedef struct joystickState
@@ -121,6 +122,11 @@ public:
     static const unsigned char JOYSTICK_MIN = 0;
     static const unsigned char JOYSTICK_ZERO = 120;
     static const unsigned char JOYSTICK_MAX = 240;
+
+    static const int SENDER_PERIOD_IN_MS = 20;
+    static const int RECEIVER_PERIOD_IN_MS = 5;
+    static const int HEARTBEAT_COUNTER_MAX = 1000 / SENDER_PERIOD_IN_MS;
+
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
