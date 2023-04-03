@@ -99,20 +99,11 @@ typedef struct robotState
 {
     uint16_t tiltServo = 0u;
     uint16_t rollServo = 0u;
+    float tiltAngle = 0.f;
+    float rollAngle = 0.f;
     float velocity = 0.f;
     float lipolVol = 0.f;
-    float gainP = 0.f;
-    float gainI = 0.f;
-    float gainD = 0.f;
 } RobotState_t;
-
-typedef struct sensors
-{
-     short int acc[3];
-     short int gyro[3];
-     short int mag[3];
-     int sample;
-} Sensors_t;
 
 class MainWindow : public QMainWindow
 {
@@ -126,7 +117,6 @@ public:
     static const int SENDER_PERIOD_IN_MS = 20;
     static const int RECEIVER_PERIOD_IN_MS = 5;
     static const int HEARTBEAT_COUNTER_MAX = 1000 / SENDER_PERIOD_IN_MS;
-
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();

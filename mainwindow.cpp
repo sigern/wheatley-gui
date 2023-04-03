@@ -432,6 +432,7 @@ void MainWindow::on_controller_comboBox_activated(int index)
     else if(index == 1) { // Xbox controller
         ui->xboxButton->setEnabled(true);
         setControlsEnabled(false);
+        ui->controller_comboBox->setEnabled(true);
         disconnect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }
