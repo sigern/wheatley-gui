@@ -73,16 +73,15 @@ enum EAlgorithm {
 enum EReceiverState {
     NONE,
     CHECK,
-    SERVO,
-    LIPOL,
-    VELOCITY
+    ROBOT_STATE,
+    LIPOL
 };
 
 enum EFrame : uint8_t {
     FRAME_START = 0xF0,
     FRAME_END   = 0xF1,
     FRAME_TYPE_JOYSTICK = 0xF2,
-    FRAME_TYPE_SERVO = 0xF3,
+    FRAME_TYPE_ROBOT_STATE = 0xF3,
     FRAME_TYPE_LIPOL = 0xF4,
     FRAME_TYPE_VELOCITY = 0xF5,
     FRAME_TYPE_SERVO_ENABLED = 0xF6,
@@ -99,10 +98,10 @@ typedef struct robotState
 {
     uint16_t tiltServo = 0u;
     uint16_t rollServo = 0u;
-    float tiltAngle = 0.f;
-    float rollAngle = 0.f;
-    float velocity = 0.f;
-    float lipolVol = 0.f;
+    int16_t tiltAngle = 0.f;
+    int16_t rollAngle = 0.f;
+    int16_t velocity = 0.f;
+    uint16_t lipolVol = 0.f;
 } RobotState_t;
 
 class MainWindow : public QMainWindow

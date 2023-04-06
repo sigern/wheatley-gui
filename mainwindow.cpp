@@ -223,6 +223,10 @@ void MainWindow::updateUiLiveRobotParameters()
     ui->velocity_val->setText(QString::number(m_wheatley.velocity, 'f', 1));
     ui->roll_val->setText(QString::number(m_wheatley.rollServo, 'i', 1));
     ui->tilt_val->setText(QString::number(m_wheatley.tiltServo, 'i', 1));
+    ui->progressBarRollAngle->setFormat(QString::number(m_wheatley.rollAngle/10.f, 'f', 1) + "°");
+    ui->progressBarRollAngle->setValue(m_wheatley.rollAngle/10.f);
+    ui->progressBarTiltAngle->setFormat(QString::number(m_wheatley.tiltAngle/10.f, 'f', 1) + "°");
+    ui->progressBarTiltAngle->setValue(m_wheatley.tiltAngle/10.f);
 }
 
 void MainWindow::changeDesired(int tilt, int roll)
@@ -318,28 +322,26 @@ void MainWindow::handleParserTimeout()
                 m_receiverQueue.pop();
                 break;
             case CHECK:
-                if (static_cast<EFrame>(el) == FRAME_TYPE_SERVO) {
-                    m_receiverState = SERVO;
+                if (static_cast<EFrame>(el) == FRAME_TYPE_ROBOT_STATE) {
+                    m_receiverState = ROBOT_STATE;
                     std::cout<<"case SERVO"<<std::endl;
                 } else if (static_cast<EFrame>(el) == FRAME_TYPE_LIPOL) {
                     m_receiverState = LIPOL;
                     std::cout<<"case LIPOL"<<std::endl;
-                } else if (static_cast<EFrame>(el) == FRAME_TYPE_VELOCITY) {
-                    m_receiverState = VELOCITY;
-                    std::cout<<"case VELOCITY"<<std::endl;
                 } else {
                     m_receiverState = NONE;
                 }
                 m_receiverQueue.pop();
                 break;
-            case SERVO:
-                if (m_receiverQueue.size() >= 5) {
-                    char servoArray[5] = {0};
-                    m_receiverQueue.popN(servoArray, 5);
-                    if (static_cast<EFrame>(servoArray[4]) == FRAME_END) {
-                        std::cout<<"Servo frame complete!"<<std::endl;
-                        m_wheatley.tiltServo = uint8_t(servoArray[0]) << 8 | uint8_t(servoArray[1]);
-                        m_wheatley.rollServo = uint8_t(servoArray[2]) << 8 | uint8_t(servoArray[3]);
+            case ROBOT_STATE:
+                if (m_receiverQueue.size() >= 13) {
+                    char robotStateArray[13] = {0};
+                    m_receiverQueue.popN(robotStateArray, 13);
+                    if (static_cast<EFrame>(robotStateArray[12]) == FRAME_END) {
+                        std::cout<<"Robot state frame complete!"<<std::endl;
+                        RobotState_t* tempRobotState = reinterpret_cast<RobotState_t*>(robotStateArray);
+                        m_wheatley = *tempRobotState;
+                        //memcpy(&m_wheatley, &robotStateArray, 12);
                         updateUiLiveRobotParameters();
                     }
                     m_receiverState = NONE;
@@ -352,18 +354,6 @@ void MainWindow::handleParserTimeout()
                     if (static_cast<EFrame>(lipolArray[3]) == FRAME_END) {
                         std::cout<<"Lipol frame complete!"<<std::endl;
                         m_wheatley.lipolVol = uint8_t(lipolArray[0]) << 8 | uint8_t(lipolArray[1]);
-                        updateUiLiveRobotParameters();
-                    }
-                    m_receiverState = NONE;
-                }
-                break;
-            case VELOCITY:
-                if (m_receiverQueue.size() >= 3) {
-                    char velocityArray[3] = {0};
-                    m_receiverQueue.popN(velocityArray, 3);
-                    if (static_cast<EFrame>(velocityArray[3]) == FRAME_END) {
-                        std::cout<<"Velocity frame complete!"<<std::endl;
-                        m_wheatley.velocity = uint8_t(velocityArray[0]) << 8 | uint8_t(velocityArray[1]);
                         updateUiLiveRobotParameters();
                     }
                     m_receiverState = NONE;

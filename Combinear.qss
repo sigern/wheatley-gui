@@ -1040,7 +1040,7 @@ QProgressBar
 {
     border: 1px solid #666666;
     text-align: center;
-	color: #000;
+        color: #FFFFFFFF;
 	font-weight: bold;
 
 }
@@ -1049,7 +1049,6 @@ QProgressBar
 QProgressBar::chunk
 {
     background-color: #398585;
-    width: 30px;
     margin: 0.5px;
 
 }
