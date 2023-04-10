@@ -281,13 +281,15 @@ void MainWindow::connectSignals()
 void MainWindow::handleSenderTimeout()
 {
     static int heartbeatCounter = 0;
-    uint8_t crcInput[] = {m_joystick.tilt, m_joystick.roll};
+    /* Joystick roll value has to be inverted because servo backward roll causes sphere forward roll */
+    const uint8_t inverted_roll = JOYSTICK_MAX - m_joystick.roll;
+    uint8_t crcInput[] = {m_joystick.tilt, inverted_roll};
 
     const char joystickFrame[] = {
         static_cast<char>(FRAME_START),
         static_cast<char>(FRAME_TYPE_JOYSTICK),
         static_cast<char>(m_joystick.tilt),
-        static_cast<char>(m_joystick.roll),
+        static_cast<char>(inverted_roll),
         static_cast<char>(CRC8(crcInput, 2)),
         static_cast<char>(FRAME_END)
     };
