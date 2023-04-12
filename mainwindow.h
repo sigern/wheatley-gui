@@ -84,7 +84,7 @@ enum EFrame : uint8_t {
     FRAME_TYPE_ROBOT_STATE = 0xF3,
     FRAME_TYPE_LIPOL = 0xF4,
     FRAME_TYPE_VELOCITY = 0xF5,
-    FRAME_TYPE_SERVO_ENABLED = 0xF6,
+    FRAME_TYPE_TILT_CONTROL_ENABLED = 0xF6,
     FRAME_TYPE_HEARTBEAT = 0xF7
 };
 
@@ -141,12 +141,14 @@ private slots:
     void on_controller_comboBox_activated(int index);
     void onServoButtonClicked();
 
+    void on_comboBoxTiltControl_currentIndexChanged(int index);
+
 private:
     void setControlsEnabled(bool isEnabled);
     void connectSignals();
     void updateUiLiveRobotParameters();
     void resetUiData();
-    void resetServoEnabledState();
+    void resetTiltControlEnabledState();
     void resetJoystickState();
     void resetRobotState();
 
@@ -165,7 +167,7 @@ private:
 
     RobotState_t m_wheatley;
     JoystickState_t m_joystick;
-    bool m_servoEnabled = false;
+    bool m_tiltControlEnabled = false;
     EReceiverState m_receiverState = EReceiverState::NONE;
 
     FixedQueue<char, 100> m_receiverQueue;

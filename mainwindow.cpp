@@ -95,15 +95,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::resetUiData()
 {
-    resetServoEnabledState();
+    resetTiltControlEnabledState();
     resetJoystickState();
     resetRobotState();
 }
 
-void MainWindow::resetServoEnabledState()
+void MainWindow::resetTiltControlEnabledState()
 {
-    m_servoEnabled = false;
-    ui->startServosButton->setText("START");
+    m_tiltControlEnabled = false;
+    ui->comboBoxTiltControl->setCurrentIndex(0);
 }
 
 void MainWindow::resetJoystickState()
@@ -269,7 +269,7 @@ void MainWindow::connectSignals()
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
     connect(ui->xboxButton, SIGNAL(clicked()), m_gamepadDisplay, SLOT(show()));
-    connect(ui->startServosButton, SIGNAL(clicked()), this, SLOT(onServoButtonClicked()));
+    connect(ui->comboBoxTiltControl, SIGNAL(clicked()), this, SLOT(onServoButtonClicked()));
 
     connect(ui->spinBox_roll, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_roll_valueChanged(int)));
     connect(ui->spinBox_tilt, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_tilt_valueChanged(int)));
@@ -405,7 +405,7 @@ void MainWindow::setControlsEnabled(bool isEnabled)
     ui->sliderTilt->setEnabled(isEnabled);
     ui->spinBox_roll->setEnabled(isEnabled);
     ui->spinBox_tilt->setEnabled(isEnabled);
-    ui->startServosButton->setEnabled(isEnabled);
+    ui->comboBoxTiltControl->setEnabled(isEnabled);
     ui->controller_comboBox->setEnabled(isEnabled);
     QMetaObject::invokeMethod(joyStickObject, "setEnabled", Q_ARG(QVariant, isEnabled));
 }
@@ -430,20 +430,6 @@ void MainWindow::on_controller_comboBox_activated(int index)
     }
 }
 
-void MainWindow::onServoButtonClicked()
-{
-    m_servoEnabled = !m_servoEnabled;
-    ui->startServosButton->setText(m_servoEnabled ? "STOP" : "START");
-
-    char servoEnabledFrame[] = {
-        static_cast<char>(FRAME_START),
-        static_cast<char>(FRAME_TYPE_SERVO_ENABLED),
-        static_cast<char>(m_servoEnabled),
-        static_cast<char>(FRAME_END)
-    };
-    m_serialPort->write(servoEnabledFrame, sizeof(servoEnabledFrame));
-}
-
 void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
     float mul = 1.f;
 
@@ -461,3 +447,18 @@ void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadSt
     ui->spinBox_tilt->setValue(int(tilt));
     ui->spinBox_roll->setValue(int(roll));
 }
+
+void MainWindow::on_comboBoxTiltControl_currentIndexChanged(int index)
+{
+    m_tiltControlEnabled = (index == 1); // 1 means PID
+
+    char tiltControlEnabledFrame[] = {
+        static_cast<char>(FRAME_START),
+        static_cast<char>(FRAME_TYPE_TILT_CONTROL_ENABLED),
+        static_cast<char>(m_tiltControlEnabled),
+        static_cast<char>(FRAME_END)
+    };
+    m_serialPort->write(tiltControlEnabledFrame, sizeof(tiltControlEnabledFrame));
+
+}
+
