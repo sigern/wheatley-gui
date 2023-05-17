@@ -269,7 +269,6 @@ void MainWindow::connectSignals()
     connect(ui->actionAboutQt, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 
     connect(ui->xboxButton, SIGNAL(clicked()), m_gamepadDisplay, SLOT(show()));
-    connect(ui->comboBoxTiltControl, SIGNAL(clicked()), this, SLOT(onServoButtonClicked()));
 
     connect(ui->spinBox_roll, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_roll_valueChanged(int)));
     connect(ui->spinBox_tilt, SIGNAL(valueChanged(int)), this, SLOT(on_spinBox_tilt_valueChanged(int)));
@@ -425,6 +424,7 @@ void MainWindow::on_controller_comboBox_activated(int index)
         ui->xboxButton->setEnabled(true);
         setControlsEnabled(false);
         ui->controller_comboBox->setEnabled(true);
+        ui->comboBoxTiltControl->setEnabled(true);
         disconnect(ui->joystickQuickItem->rootObject(), SIGNAL(joystickChanged(int,int)), this, SLOT(changeDesired(int,int)));
         connect(m_gamepadController, SIGNAL(controllerNewState(SimpleXbox360Controller::InputState)), this, SLOT(changeDesiredXbox(SimpleXbox360Controller::InputState)));
     }

@@ -139,8 +139,6 @@ private slots:
     void on_sliderRoll_valueChanged(int roll);
     void on_sliderTilt_valueChanged(int tilt);
     void on_controller_comboBox_activated(int index);
-    void onServoButtonClicked();
-
     void on_comboBoxTiltControl_currentIndexChanged(int index);
 
 private:
