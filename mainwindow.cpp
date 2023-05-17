@@ -431,13 +431,7 @@ void MainWindow::on_controller_comboBox_activated(int index)
 }
 
 void MainWindow::changeDesiredXbox(SimpleXbox360Controller::InputState gamePadState) {
-    float mul = 1.f;
-
-//    if(gamePadState.rightTrigger > 0.5f) {
-//        mul = 1.f;
-//    } else {
-//        mul = 0.5f;
-//    }
+    const float mul = 0.5f + 0.5f * gamePadState.rightTrigger;
 
     const float tilt = JOYSTICK_ZERO + JOYSTICK_ZERO * gamePadState.rightThumbX;
     const float roll = JOYSTICK_ZERO + JOYSTICK_ZERO * mul * gamePadState.leftThumbY;
